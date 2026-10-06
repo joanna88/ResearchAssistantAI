@@ -4,9 +4,21 @@ from rdkit.Chem import Descriptors, Lipinski, QED
 
 RDLogger.DisableLog("rdApp.*")
 
-def calculate_lipinski_violations(mol_weight: float, logp: float, 
+
+def _calculate_lipinski_violations(mol_weight: float, logp: float, 
                                   h_donors: int, h_acceptors: int) -> dict:
-    """Calculates Lipinski's Rule of Five violations."""
+    """
+    Helper function to calculate Lipinski's Rule of Five violations.
+    
+    Args:
+        mol_weight: Molecular weight in Daltons.
+        logp: LogP value (octanol-water partition coefficient).
+        h_donors: Number of hydrogen bond donors.
+        h_acceptors: Number of hydrogen bond acceptors.
+        
+    Returns:
+        A dictionary containing the number of Lipinski violations and a dictionary of
+        the specific rules that were violated."""
 
     violated_rules = {}
 
@@ -29,7 +41,26 @@ def calculate_lipinski_violations(mol_weight: float, logp: float,
 
 
 def assess_druglikeness(smiles_list: list[str]) -> dict:
-    """Assesses the druglikeness of an input list of SMILES strings."""
+    """ 
+    Calculate molecular properties and drug-likeness metrics from SMILES.
+    
+    Use this tool only when valid SMILES strings are provided or available from 
+    a reliable source. Do not invent, infer, or guess SMILES. Only SMILES input 
+    is accepted.
+
+    Use this tool to calculate molecular weight (Da), LogP, chemically defined
+    RDKit H-bond donor/acceptor counts, TPSA (Å²), rotatable bonds, QED (0-1, higher = 'more drug-like'),
+    and Lipinski Rule of Five violations. Does not predict biological activity,
+    toxicity, or clinical efficacy.
+
+    Args:
+        smiles_list: List of 1-50 SMILES strings. Process all available SMILES
+        together in a single call.
+
+    Returns:
+        Results for each SMILES in the same order as the input list, with an overall
+        status ("success" or "error"), calculated properties, validity, Lipinski
+        violation count, and violated rules. Invalid SMILES are reported individually. """
 
     if isinstance(smiles_list, str):
         smiles_list = [smiles_list]
@@ -70,7 +101,7 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
             tpsa = Descriptors.TPSA(mol)
             rot_bonds = Lipinski.NumRotatableBonds(mol)
             qed_score = QED.qed(mol)
-            violations = calculate_lipinski_violations(mol_weight, clogp, h_donors, h_acceptors)
+            violations = _calculate_lipinski_violations(mol_weight, clogp, h_donors, h_acceptors)
 
             out_list.append({
                 "smiles": smiles,
