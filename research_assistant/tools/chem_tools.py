@@ -4,6 +4,15 @@ from rdkit.Chem import Descriptors, Lipinski, QED
 
 RDLogger.DisableLog("rdApp.*")
 
+def _clean_smiles(smiles: str) -> str:
+    """Remove surrounding whitespace and quote delimiters from a SMILES string."""
+
+    smiles = smiles.strip()
+
+    if (len(smiles) >= 2 and smiles[0] == smiles[-1] and smiles[0] in ('"', "'")):
+        smiles = smiles[1:-1].strip()
+
+    return smiles
 
 def _calculate_lipinski_violations(mol_weight: float, logp: float, 
                                   h_donors: int, h_acceptors: int) -> dict:
@@ -78,7 +87,10 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
 
     out_list = []
     for smiles in smiles_list:
-        if not smiles.strip():
+
+        smiles = _clean_smiles(smiles)
+        
+        if not smiles:
             out_list.append({
                     "smiles": smiles,
                     "valid": False,
