@@ -5,12 +5,17 @@ from rdkit.Chem import Descriptors, Lipinski, QED
 RDLogger.DisableLog("rdApp.*")
 
 def _clean_smiles(smiles: str) -> str:
-    """Remove surrounding whitespace and quote delimiters from a SMILES string."""
+    """Remove surrounding whitespace and common punctuation delimiters from a SMILES string."""
 
     smiles = smiles.strip()
 
-    if (len(smiles) >= 2 and smiles[0] == smiles[-1] and smiles[0] in ('"', "'")):
-        smiles = smiles[1:-1].strip()
+    delimiters = ('"', "'", ",", ";", "`")
+
+    while smiles and smiles[0] in delimiters:
+        smiles = smiles[1:].strip()
+
+    while smiles and smiles[-1] in delimiters:
+        smiles = smiles[:-1].strip()
 
     return smiles
 
@@ -89,7 +94,7 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
     for smiles in smiles_list:
 
         smiles = _clean_smiles(smiles)
-        
+
         if not smiles:
             out_list.append({
                     "smiles": smiles,
@@ -97,6 +102,15 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
                     "error_message": f"Empty SMILES string: {smiles}"
                     })
             continue
+
+        if ',' in smiles or any(ch.isspace() for ch in smiles):
+            out_list.append({
+                    "smiles": smiles,
+                    "valid": False,
+                    "error_message": f"Invalid SMILES string (contains spaces or commas), which might indicated multiple SMILES entries parsed as one: {smiles}"
+                    })
+            continue
+        
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             out_list.append({

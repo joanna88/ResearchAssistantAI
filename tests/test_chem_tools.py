@@ -92,3 +92,24 @@ def test_lipinski_violations():
     assert mol["valid"] is True
     assert mol["lipinski_violations"] == 2
     assert set(mol["violated_rules"]) == {"molecular_weight", "logp"}
+
+
+@pytest.mark.parametrize("smiles", ['"CCO"', "'CCO'", " CCO ", "CCO,", "`CCO`"])
+def test_delimiters_are_stripped(smiles):
+
+    result = assess_druglikeness([smiles])
+    mol = result["all_results"][0]
+
+    assert mol["valid"] is True
+    assert mol["smiles"] == "CCO"
+
+
+@pytest.mark.parametrize("smiles", ["CCO c1ccccc1", "CCO,c1ccccc1", "CCO\tCC"])
+def test_multiple_smiles_in_one_entry_rejected(smiles):
+    
+    result = assess_druglikeness([smiles])
+    mol = result["all_results"][0]
+
+    assert len(result["all_results"]) == 1
+    assert mol["valid"] is False
+    assert "error_message" in mol
