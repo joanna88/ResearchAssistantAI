@@ -188,8 +188,26 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
 
 
 def tanimoto_similarity(query_smiles: str, smiles_list: list[str]) -> dict:
-    """Calculate Tanimoto similarity between a query SMILES and a list of SMILES.
-    
+    """Calculate fingerprint similarity between a query SMILES and 1-50 SMILES.
+
+    Use this tool to compare molecular structures using Tanimoto similarity with
+    Morgan fingerprints (radius 2, 2048 bits). Scores range from 0 to 1; higher
+    values indicate greater fingerprint similarity. Keep in mind that there is no universal 
+    threshold; structurally similar compounds can still differ greatly in activity.
+
+    Do not use this tool to predict biological activity, efficacy, or other
+    molecular properties. Do not invent, infer, or modify SMILES.
+
+    Args:
+        query_smiles: Query molecule as a SMILES string. 
+        smiles_list: List of 1-50 SMILES strings to compare with the query. Process all available SMILES
+        together in a single call.
+
+    Returns:
+        Valid results sorted by similarity from highest to lowest. "input_index"
+        is the zero-based position (0, 1, 2, ...) of each SMILES in the original
+        input list, not its similarity rank. Invalid SMILES are reported
+        separately. An invalid query or input list returns an error.
     """
 
     cleaned_query, query_mol, error = _parse_smiles(query_smiles)

@@ -1,7 +1,8 @@
 import pytest
-from research_assistant.tools.chem_tools import assess_druglikeness
+from research_assistant.tools.chem_tools import assess_druglikeness, tanimoto_similarity
 
 
+# tests for assess_druglikeness
 def test_aspirin_properties():
 
     aspirin = "CC(=O)Oc1ccccc1C(=O)O"
@@ -113,3 +114,92 @@ def test_multiple_smiles_in_one_entry_rejected(smiles):
     assert len(result["all_results"]) == 1
     assert mol["valid"] is False
     assert "error_message" in mol
+
+
+# tests for tanimoto_similarity
+def test_basic_correctness_tanimoto_similarity():
+
+    mol1 = "CC(=O)Oc1ccccc1C(=O)O"
+    mol2 = "CC(=O)Oc1ccccc1C(=O)O"
+
+    result = tanimoto_similarity(mol1, [mol2])
+    sim = result["results"][0]["similarity"]
+
+    assert sim == 1.0
+    assert len(result["results"]) == 1
+
+
+def is_descending(values: list) -> bool:
+    return all(values[i] >= values[i + 1] for i in range(len(values) - 1))
+
+
+def test_sorting_tanimoto_similarity():
+
+    mol1 = "CC(=O)Oc1ccccc1C(=O)O"
+    smiles_list = ["CCO", "O=C(O)c1ccccc1O", "CC(=O)Oc1ccccc1C(=O)O"]
+
+    results = tanimoto_similarity(mol1, smiles_list=smiles_list)
+    result1 = results["results"][0]
+    result2 = results["results"][1]
+    result3 = results["results"][2]
+
+    assert result1["input_index"] == 2
+    assert result2["input_index"] == 1
+    assert result3["input_index"] == 0
+
+    assert is_descending([result1["similarity"], result2["similarity"], result3["similarity"]])
+
+
+def test_invalid_entry_tanimoto_similarity():
+
+    mol1 = "CC(=O)Oc1ccccc1C(=O)O"
+    smiles_list = ["CCO", "O=C(O)c1ccccc1O", "xyz", "CC(=O)Oc1ccccc1C(=O)O"]
+
+    results = tanimoto_similarity(mol1, smiles_list=smiles_list)
+
+    assert len(results["results"]) == 3
+    assert len(results["invalid"]) == 1
+
+    assert results["invalid"][0]["smiles"] == "xyz"
+    assert results["invalid"][0]["input_index"] == 2
+
+
+def test_invalid_query_tanimoto_similarity():
+
+    mol1 = "xyz"
+    smiles_list = ["CCO"]
+
+    results = tanimoto_similarity(mol1, smiles_list=smiles_list)
+
+    assert results["status"] == "error"
+
+
+def test_empty_list_tanimoto():
+
+    mol1 = "CCO"
+    mol2 = []
+
+    results = tanimoto_similarity(mol1, mol2)
+
+    assert results["status"] == "error"
+
+
+def test_aspirin_salicylic_acid():
+
+    mol1 = "CC(=O)Oc1ccccc1C(=O)O"
+    mol2 = ["O=C(O)c1ccccc1O"]
+    
+    results = tanimoto_similarity(mol1, mol2)
+
+    assert results["results"][0]["similarity"] == pytest.approx(0.45, abs=0.01)
+
+
+def test_single_string_tanimoto():
+
+    mol1 = "CC(=O)Oc1ccccc1C(=O)O"
+    mol2 = "O=C(O)c1ccccc1O"
+    
+    results = tanimoto_similarity(mol1, mol2)
+
+    assert results["status"] == "success"
+    assert len(results["results"]) == 1
