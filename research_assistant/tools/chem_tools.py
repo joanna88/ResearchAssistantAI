@@ -107,7 +107,7 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
             out_list.append({
                     "smiles": smiles,
                     "valid": False,
-                    "error_message": f"Invalid SMILES string (contains spaces or commas), which might indicated multiple SMILES entries parsed as one: {smiles}"
+                    "error_message": f"Invalid SMILES string (contains spaces or commas), which might indicate multiple SMILES entries parsed as one: {smiles}. Try providing each SMILES as a separate entry in the list."
                     })
             continue
         
