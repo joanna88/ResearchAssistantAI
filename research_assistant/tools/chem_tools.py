@@ -85,7 +85,6 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
                     "error_message": f"Empty SMILES string: {smiles}"
                     })
             continue
-            
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             out_list.append({
