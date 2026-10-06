@@ -1,8 +1,30 @@
-from rdkit import Chem, RDLogger
-from rdkit.Chem import Descriptors, Lipinski, QED
+from rdkit import Chem, RDLogger, DataStructs
+from rdkit.Chem import Descriptors, Lipinski, QED, rdFingerprintGenerator
 
 
 RDLogger.DisableLog("rdApp.*")
+
+# running fingerprint generator from the module level to create it only once
+_MORGAN_GEN = rdFingerprintGenerator.GetMorganGenerator(radius=2, fpSize=2048)
+
+
+def _check_smiles_length(smiles_list: list[str]) -> str | None:
+    """Validate that the SMILES list contains between 1 and 50 entries.
+
+    Args:
+        smiles_list: List of SMILES strings to validate.
+
+    Returns:
+        Error message if the list size is invalid, otherwise None.
+    """
+
+    if len(smiles_list) == 0:
+        return "Input list is empty."
+
+    elif len(smiles_list) > 50:
+        return "Input list exceeds maximum length of 50."
+
+    return None
 
 
 def _clean_smiles(smiles: str) -> str:
@@ -118,16 +140,12 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
     if isinstance(smiles_list, str):
         smiles_list = [smiles_list]
 
-    if len(smiles_list) == 0:
+    length_error = _check_smiles_length(smiles_list)
+    if length_error:
         return {
-                "status": "error",
-                "error_message": "Input list is empty."
-                }
-    elif len(smiles_list) > 50:
-        return {
-                "status": "error",
-                "error_message": "Input list exceeds maximum length of 50."
-                }
+            "status": "error",
+            "error_message": length_error
+        }
 
     out_list = []
     for smiles in smiles_list:
@@ -167,4 +185,61 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
         "status": "success",
         "all_results": out_list
     }
-            
+
+
+def tanimoto_similarity(query_smiles: str, smiles_list: list[str]) -> dict:
+    """Calculate Tanimoto similarity between a query SMILES and a list of SMILES.
+    
+    """
+
+    cleaned_query, query_mol, error = _parse_smiles(query_smiles)
+    if error:
+        return {
+            "status": "error",
+            "error_message": f"Invalid query SMILES. {error}"
+        }
+
+    if isinstance(smiles_list, str):
+        smiles_list = [smiles_list]
+
+    length_error = _check_smiles_length(smiles_list)
+    if length_error:
+        return {
+            "status": "error",
+            "error_message": length_error
+        }
+
+    fp1 = _MORGAN_GEN.GetFingerprint(query_mol)
+
+    out_list = []
+    invalid = []
+    for idx, smi in enumerate(smiles_list):
+
+        cleaned_smi, mol, error = _parse_smiles(smi)
+
+        if error:
+            invalid.append({
+                "input_index": idx,
+                "smiles": cleaned_smi,
+                "error_message": error
+            })
+            continue
+
+        fp2 = _MORGAN_GEN.GetFingerprint(mol)
+        similarity = DataStructs.TanimotoSimilarity(fp1, fp2)
+
+        out_list.append({
+            "input_index": idx,
+            "smiles": cleaned_smi,
+            "similarity": round(similarity, 2)
+        })
+
+    return {
+        "status": "success",
+        "query_smiles": cleaned_query,
+        "fingerprint": "Morgan radius 2, 2048 bits",
+        "results": sorted(out_list, key=lambda r: r["similarity"], reverse=True),
+        "invalid": invalid
+    }
+
+  
