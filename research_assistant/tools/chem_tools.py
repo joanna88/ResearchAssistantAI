@@ -4,9 +4,17 @@ from rdkit.Chem import Descriptors, Lipinski, QED
 
 RDLogger.DisableLog("rdApp.*")
 
-def _clean_smiles(smiles: str) -> str:
-    """Remove surrounding whitespace and common punctuation delimiters from a SMILES string."""
 
+def _clean_smiles(smiles: str) -> str:
+    """Remove surrounding whitespace and common punctuation delimiters from a SMILES string.
+    
+    Args:
+        smiles: A SMILES string to clean.
+        
+    Returns:
+        The cleaned SMILES string.
+    """
+    
     smiles = smiles.strip()
 
     delimiters = ('"', "'", ",", ";", "`")
@@ -18,6 +26,37 @@ def _clean_smiles(smiles: str) -> str:
         smiles = smiles[:-1].strip()
 
     return smiles
+
+def _parse_smiles(smiles: str) -> tuple[str, Chem.Mol | None, str | None]:
+    """Parse a SMILES string and return the cleaned SMILES, RDKit Mol object, and any error message if invalid.
+    
+    Args:
+        smiles: A SMILES string to parse.
+    
+    Returns:
+        A tuple containing:
+            - cleaned_smiles: The cleaned SMILES string.
+            - mol: The RDKit Mol object if valid, otherwise None.
+            - error: An error message if the SMILES is invalid, otherwise None."""
+    
+    cleaned_smiles = _clean_smiles(smiles)
+
+    if not cleaned_smiles:
+        return cleaned_smiles, None, f"Empty SMILES string: {cleaned_smiles}"
+
+    elif ',' in cleaned_smiles:
+        return cleaned_smiles, None, f"Invalid SMILES string (contains commas), which might indicate multiple SMILES entries parsed as one: {cleaned_smiles}. Try providing each SMILES as a separate entry in the list."
+
+    elif any(ch.isspace() for ch in cleaned_smiles):
+        return cleaned_smiles, None, f"Invalid SMILES string (contains whitespace), which might indicate multiple SMILES entries parsed as one: {cleaned_smiles}. Try providing each SMILES as a separate entry in the list."
+            
+    mol = Chem.MolFromSmiles(cleaned_smiles)
+
+    if mol is None:
+        return cleaned_smiles, None, f"Invalid molecule from SMILES: {cleaned_smiles}"
+
+    return cleaned_smiles, mol, None
+
 
 def _calculate_lipinski_violations(mol_weight: float, logp: float, 
                                   h_donors: int, h_acceptors: int) -> dict:
@@ -93,43 +132,26 @@ def assess_druglikeness(smiles_list: list[str]) -> dict:
     out_list = []
     for smiles in smiles_list:
 
-        smiles = _clean_smiles(smiles)
-
-        if not smiles:
+        cleaned_smiles, mol, error = _parse_smiles(smiles)
+        if error:
             out_list.append({
-                    "smiles": smiles,
-                    "valid": False,
-                    "error_message": f"Empty SMILES string: {smiles}"
-                    })
-            continue
-
-        if ',' in smiles or any(ch.isspace() for ch in smiles):
-            out_list.append({
-                    "smiles": smiles,
-                    "valid": False,
-                    "error_message": f"Invalid SMILES string (contains spaces or commas), which might indicate multiple SMILES entries parsed as one: {smiles}. Try providing each SMILES as a separate entry in the list."
-                    })
+                "smiles": cleaned_smiles,
+                "valid": False,
+                "error_message": error
+            })
             continue
         
-        mol = Chem.MolFromSmiles(smiles)
-        if mol is None:
-            out_list.append({
-                    "smiles": smiles,
-                    "valid": False,
-                    "error_message": f"Invalid molecule from SMILES: {smiles}"
-                    })
-        else:
-            mol_weight = Descriptors.MolWt(mol)
-            clogp = Descriptors.MolLogP(mol)
-            h_donors = Lipinski.NumHDonors(mol) # chemically precise definition of an H-bond donor
-            h_acceptors = Lipinski.NumHAcceptors(mol) # chemically precise definition of an H-bond acceptor
-            tpsa = Descriptors.TPSA(mol)
-            rot_bonds = Lipinski.NumRotatableBonds(mol)
-            qed_score = QED.qed(mol)
-            violations = _calculate_lipinski_violations(mol_weight, clogp, h_donors, h_acceptors)
+        mol_weight = Descriptors.MolWt(mol)
+        clogp = Descriptors.MolLogP(mol)
+        h_donors = Lipinski.NumHDonors(mol) # chemically precise definition of an H-bond donor
+        h_acceptors = Lipinski.NumHAcceptors(mol) # chemically precise definition of an H-bond acceptor
+        tpsa = Descriptors.TPSA(mol)
+        rot_bonds = Lipinski.NumRotatableBonds(mol)
+        qed_score = QED.qed(mol)
+        violations = _calculate_lipinski_violations(mol_weight, clogp, h_donors, h_acceptors)
 
-            out_list.append({
-                "smiles": smiles,
+        out_list.append({
+                "smiles": cleaned_smiles,
                 "valid": True,
                 "molecular_weight": round(mol_weight, 2),
                 "logp": round(clogp, 2),
