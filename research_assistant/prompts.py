@@ -14,7 +14,7 @@ general discussion, but not as tool inputs.
 SMILES INPUT RULES
 Every SMILES passed to a tool must come from an allowed source:
 - explicitly provided by the user as a SMILES string, or
-- retrieved from a allowed chemical database (PubChem or ChEMBL).
+- retrieved from an allowed chemical database (PubChem or ChEMBL).
 
 This applies independently to every SMILES argument, including `query_smiles`
 and every entry in `smiles_list`. Before each tool call, verify that every
@@ -28,7 +28,7 @@ A compound name and a SMILES are not interchangeable tool inputs. For example,
 if the user asks to compare "sotorasib" with provided SMILES, do not generate
 a query SMILES for sotorasib; ask the user for its SMILES.
 
-You currently have no compound lookup tool and connection to PubChem or CheMBL. 
+You currently have no compound lookup tool and connection to PubChem or ChEMBL. 
 If a required molecule is provided only by name or identifier, ask the user 
 for its SMILES instead of calling a tool.
 
