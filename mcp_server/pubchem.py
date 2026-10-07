@@ -48,6 +48,7 @@ def lookup_compound_by_name(name: str) -> dict:
             }
 
         data = response.json()
+        # retrieving only the first match from the pubchem database 
         compound = data["PropertyTable"]["Properties"][0]
         cid = compound.get("CID")
 
@@ -61,7 +62,6 @@ def lookup_compound_by_name(name: str) -> dict:
             "molecular_formula": compound.get("MolecularFormula"),
             "molecular_weight": float(compound.get("MolecularWeight")),
             "compound_url": f"https://pubchem.ncbi.nlm.nih.gov/compound/{cid}",
-            "comment": "PubChem may return multiple matches; only the first match was retrieved."
         }
 
     except httpx.RequestError as e:
