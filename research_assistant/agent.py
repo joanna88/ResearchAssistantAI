@@ -3,7 +3,7 @@ from google.adk.models import Gemini
 from google.genai import types
 
 from research_assistant.prompts import CHEM_AGENT_INSTRUCTION
-from research_assistant.tools.chem_tools import assess_druglikeness
+from research_assistant.tools.chem_tools import assess_druglikeness, tanimoto_similarity
 
 
 root_agent = Agent(name="research_assistant", 
@@ -13,8 +13,8 @@ root_agent = Agent(name="research_assistant",
                                                                 attempts=5,
                                                                 http_status_codes=[429, 500, 503, 504])
                                                                 ),
-                   description="A research assistant for evaluating molecular properties and drug-likeness metrics from SMILES strings.",
+                   description="A research assistant for evaluating molecular properties, drug-likeness metrics and compute structural similarity from SMILES strings.",
 
                    instruction=CHEM_AGENT_INSTRUCTION,
-                   tools=[assess_druglikeness],
+                   tools=[assess_druglikeness, tanimoto_similarity],
                    )

@@ -35,4 +35,14 @@ A stricter prompt initially also rejected valid SMILES surrounded by quotation m
 **Next:** Add PubChem name-to-SMILES lookup through the MCP server so compound names can be resolved against a trusted source instead of requiring the user to provide the SMILES.
 
 
+### Fabricated source
+
+An earlier prompt allowed SMILES retrieved from *"a reliable chemical database or authoritative source."* Because the agent had no compound lookup tool, it could claim that a SMILES came from an external database without actually retrieving or verifying it.
+
+**Why this matters:** a cited source does not establish provenance unless the agent actually accessed that source. This could allow an invented SMILES to appear trustworthy.
+
+**Fix:** while no compound lookup tool is available, only SMILES explicitly provided by the user are accepted for tool calls. Compound names or identifiers require the user to provide the SMILES.
+
+**Next:** a PubChem name-to-SMILES lookup will allow externally sourced SMILES with tool-verifiable provenance.
+
 ## Future work
