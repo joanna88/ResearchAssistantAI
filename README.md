@@ -44,4 +44,16 @@ An earlier prompt allowed SMILES from a *"reliable chemical database or authorit
 
 **Next:** PubChem/ChEMBL lookup tools will provide verifiable name-to-SMILES retrieval and provenance.
 
+### Automatic correction of misspelled compound names
+
+Another failure mode occurred when a misspelled compound name was provided. After `lookup_compound_by_name` returned that the compound was not found and suggested checking the spelling, the LLM sometimes corrected the compound name itself and performed another lookup instead of asking the user to verify the intended compound.
+
+**Why this matters:** automatically correcting a compound name can resolve it to a different molecule than the user intended. The lookup may then succeed, giving the incorrect correction the appearance of being verified by PubChem.
+
+**Mitigation:** the agent instructions now explicitly state that when `lookup_compound_by_name` reports a compound as not found or potentially misspelled, the agent must not correct, reinterpret, or retry the name itself. It should instead ask the user to verify or correct the compound name.
+
+**Current limitation:** this behavior is not fully reliable. After the prompt change, the model sometimes correctly asks the user for clarification, but in other runs it still corrects the name itself. This indicates that prompt-level instructions alone do not fully enforce this constraint.
+
+**Next:** enforce this behavior at the application or tool level so that a failed name lookup requires user clarification before another lookup can be performed.
+
 ## Future work

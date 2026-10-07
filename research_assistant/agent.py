@@ -1,9 +1,25 @@
+import sys
+
+from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.models import Gemini
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.genai import types
+from mcp import StdioServerParameters
 
 from research_assistant.prompts import CHEM_AGENT_INSTRUCTION
 from research_assistant.tools.chem_tools import assess_druglikeness, tanimoto_similarity
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+mcp_toolset = McpToolset(connection_params=StdioConnectionParams(
+    server_params=StdioServerParameters(command=sys.executable,
+                                        args=["-m", "mcp_server.server"], 
+                                        cwd=PROJECT_ROOT),
+                                        timeout=20
+                                        ))
 
 
 root_agent = Agent(name="research_assistant", 
@@ -16,5 +32,5 @@ root_agent = Agent(name="research_assistant",
                    description="A research assistant for evaluating molecular properties, drug-likeness metrics and compute structural similarity from SMILES strings.",
 
                    instruction=CHEM_AGENT_INSTRUCTION,
-                   tools=[assess_druglikeness, tanimoto_similarity],
+                   tools=[assess_druglikeness, tanimoto_similarity, mcp_toolset],
                    )
