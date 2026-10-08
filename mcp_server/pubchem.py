@@ -12,7 +12,7 @@ def lookup_compound_by_name(name: str) -> dict:
     A single compound name can be processed per tool call.
 
     Args:
-        name: Compound or drug name to search in PubChem. 
+        name: Compound or drug name to search in PubChem.
 
     Returns:
         PubChem result containing CID, IUPAC name, SMILES, molecular formula,
@@ -28,7 +28,7 @@ def lookup_compound_by_name(name: str) -> dict:
         }
 
     clean_name = urllib.parse.quote(name.strip(), safe="")
-    pubchem_url = f'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{clean_name}/property/SMILES,MolecularFormula,MolecularWeight,IUPACName/JSON'
+    pubchem_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{clean_name}/property/SMILES,MolecularFormula,MolecularWeight,IUPACName/JSON"
 
     try:
         response = httpx.get(pubchem_url, timeout=10)
@@ -48,7 +48,7 @@ def lookup_compound_by_name(name: str) -> dict:
             }
 
         data = response.json()
-        # retrieving only the first match from the pubchem database 
+        # retrieving only the first match from the pubchem database
         compound = data["PropertyTable"]["Properties"][0]
         cid = compound.get("CID")
 

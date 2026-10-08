@@ -15,24 +15,26 @@ from research_assistant.callbacks import guard_compound_lookup
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-mcp_toolset = McpToolset(connection_params=StdioConnectionParams(
-    server_params=StdioServerParameters(command=sys.executable,
-                                        args=["-m", "mcp_server.server"], 
-                                        cwd=PROJECT_ROOT),
-                                        timeout=20
-                                        ))
+mcp_toolset = McpToolset(
+    connection_params=StdioConnectionParams(
+        server_params=StdioServerParameters(
+            command=sys.executable, args=["-m", "mcp_server.server"], cwd=PROJECT_ROOT
+        ),
+        timeout=20,
+    )
+)
 
 
-root_agent = Agent(name="research_assistant", 
-                   model=Gemini(
-                       model="gemini-3.5-flash-lite",
-                       retry_options=types.HttpRetryOptions(initial_delay=1, 
-                                                                attempts=5,
-                                                                http_status_codes=[429, 500, 503, 504])
-                                                                ),
-                   description="A research assistant for evaluating molecular properties, drug-likeness metrics and compute structural similarity from SMILES strings.",
-
-                   instruction=CHEM_AGENT_INSTRUCTION,
-                   tools=[assess_druglikeness, tanimoto_similarity, mcp_toolset],
-                   before_tool_callback=guard_compound_lookup
-                   )
+root_agent = Agent(
+    name="research_assistant",
+    model=Gemini(
+        model="gemini-3.5-flash-lite",
+        retry_options=types.HttpRetryOptions(
+            initial_delay=1, attempts=5, http_status_codes=[429, 500, 503, 504]
+        ),
+    ),
+    description="A research assistant for evaluating molecular properties, drug-likeness metrics and compute structural similarity from SMILES strings.",
+    instruction=CHEM_AGENT_INSTRUCTION,
+    tools=[assess_druglikeness, tanimoto_similarity, mcp_toolset],
+    before_tool_callback=guard_compound_lookup,
+)

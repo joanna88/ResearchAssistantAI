@@ -6,6 +6,7 @@ from google.genai import types
 
 # testing name_in_text function
 
+
 def test_basic_correctness():
 
     name = "aspirin"
@@ -13,33 +14,38 @@ def test_basic_correctness():
 
     assert name_in_texts(name, text) is True
 
+
 def test_capitalization():
 
-    name = "Sotorasib" 
+    name = "Sotorasib"
     text = ["is sotorasib drug-like?"]
 
     assert name_in_texts(name, text) is True
 
+
 def test_substring_trap():
 
-    name = "sotorasib" 
+    name = "sotorasib"
     text = ["Is sotorasibb drug-like?"]
 
     assert name_in_texts(name, text) is False
 
+
 def test_special_characters():
 
-    name = "2,4-D" 
+    name = "2,4-D"
     text = ["Is 2,4-D toxic?"]
 
     assert name_in_texts(name, text) is True
 
+
 def test_empty_list():
 
-    name = "aspirin" 
+    name = "aspirin"
     text = []
 
     assert name_in_texts(name, text) is False
+
 
 def test_stereo_name():
 
@@ -48,6 +54,7 @@ def test_stereo_name():
 
     assert name_in_texts(name, text) is True
 
+
 def test_string_text():
 
     name = "(S)-ibuprofen"
@@ -55,11 +62,14 @@ def test_string_text():
 
     assert name_in_texts(name, text) is True
 
+
 # testing guard_compound_lookup tool
 def test_guard_blocks_corrected_name():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
-    content = types.Content(role="user", parts=[types.Part(text="Is sotorasibb drug-like?")])
+    content = types.Content(
+        role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
+    )
     context = SimpleNamespace(user_content=content)
     args = {"name": "sotorasib"}
 
@@ -73,7 +83,9 @@ def test_guard_blocks_corrected_name():
 def test_guard_allows_correct_name():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
-    content = types.Content(role="user", parts=[types.Part(text="Is sotorasibb drug-like?")])
+    content = types.Content(
+        role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
+    )
     context = SimpleNamespace(user_content=content)
     args = {"name": "sotorasibb"}
 
@@ -85,7 +97,9 @@ def test_guard_allows_correct_name():
 def test_guard_allows_other_tools():
 
     tool = SimpleNamespace(name="assess_druglikeness")
-    content = types.Content(role="user", parts=[types.Part(text="Is sotorasibb drug-like?")])
+    content = types.Content(
+        role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
+    )
     context = SimpleNamespace(user_content=content)
     args = {"name": "sotorasibb"}
 
@@ -102,8 +116,9 @@ def test_guard_no_user_message():
 
     result = guard_compound_lookup(tool, args, context)
 
-    assert result is not None 
+    assert result is not None
     assert result["status"] == "error"
+
 
 def test_guard_message_without_text():
 
@@ -120,7 +135,13 @@ def test_guard_message_without_text():
 def test_guard_image_in_text():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
-    content = types.Content(role="user", parts=[types.Part(inline_data=types.Blob(mime_type="image/png", data=b"x")), types.Part(text="Is aspirin drug-like?")])
+    content = types.Content(
+        role="user",
+        parts=[
+            types.Part(inline_data=types.Blob(mime_type="image/png", data=b"x")),
+            types.Part(text="Is aspirin drug-like?"),
+        ],
+    )
     context = SimpleNamespace(user_content=content)
     args = {"name": "aspirin"}
 

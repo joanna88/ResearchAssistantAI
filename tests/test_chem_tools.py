@@ -24,7 +24,7 @@ def test_aspirin_properties():
 
 def test_invalid_smiles():
 
-    invalid_smiles = 'xyz'
+    invalid_smiles = "xyz"
     result = assess_druglikeness([invalid_smiles])
     mol = result["all_results"][0]
 
@@ -37,7 +37,6 @@ def test_order_of_results():
 
     smiles_list = ["CCO", "CC(=O)O", "C1CCCCC1", "xyz", ""]
     result = assess_druglikeness(smiles_list)
-    
 
     assert result["status"] == "success"
     assert len(result["all_results"]) == 5
@@ -107,7 +106,7 @@ def test_delimiters_are_stripped(smiles):
 
 @pytest.mark.parametrize("smiles", ["CCO c1ccccc1", "CCO,c1ccccc1", "CCO\tCC"])
 def test_multiple_smiles_in_one_entry_rejected(smiles):
-    
+
     result = assess_druglikeness([smiles])
     mol = result["all_results"][0]
 
@@ -147,7 +146,9 @@ def test_sorting_tanimoto_similarity():
     assert result2["input_index"] == 1
     assert result3["input_index"] == 0
 
-    assert is_descending([result1["similarity"], result2["similarity"], result3["similarity"]])
+    assert is_descending(
+        [result1["similarity"], result2["similarity"], result3["similarity"]]
+    )
 
 
 def test_invalid_entry_tanimoto_similarity():
@@ -188,7 +189,7 @@ def test_aspirin_salicylic_acid():
 
     mol1 = "CC(=O)Oc1ccccc1C(=O)O"
     mol2 = ["O=C(O)c1ccccc1O"]
-    
+
     results = tanimoto_similarity(mol1, mol2)
 
     assert results["results"][0]["similarity"] == pytest.approx(0.45, abs=0.01)
@@ -198,7 +199,7 @@ def test_single_string_tanimoto():
 
     mol1 = "CC(=O)Oc1ccccc1C(=O)O"
     mol2 = "O=C(O)c1ccccc1O"
-    
+
     results = tanimoto_similarity(mol1, mol2)
 
     assert results["status"] == "success"

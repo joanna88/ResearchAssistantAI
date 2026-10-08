@@ -1,6 +1,7 @@
 import re
 from google.adk.tools import BaseTool, ToolContext
 
+
 def name_in_texts(name: str, texts: list[str]) -> bool:
     """Check whether the name appears as a whole term in any of the texts."""
 
@@ -11,7 +12,9 @@ def name_in_texts(name: str, texts: list[str]) -> bool:
     return any(re.search(pattern, text.casefold()) for text in texts)
 
 
-def guard_compound_lookup(tool: BaseTool, args: dict, tool_context: ToolContext) -> dict | None:
+def guard_compound_lookup(
+    tool: BaseTool, args: dict, tool_context: ToolContext
+) -> dict | None:
     """
     Guard compound-name lookups against silent name correction.
 
@@ -34,18 +37,20 @@ def guard_compound_lookup(tool: BaseTool, args: dict, tool_context: ToolContext)
         return None
 
     if tool_context.user_content is None:
-        return {"status": "error", 
-                "error_message": "There is no user content. Ask the user to confirm the compound name"
+        return {
+            "status": "error",
+            "error_message": "There is no user content. Ask the user to confirm the compound name",
         }
-    
+
     parts = [part.text for part in tool_context.user_content.parts if part.text]
     name = args.get("name", "")
 
     if name_in_texts(name, parts) is False:
-        return {"status": "error", 
-                "error_message": f"The name '{name}' does not appear in the user's message. "
-                                "Do not correct or change compound names; ask the user to "
-                                "confirm the intended compound."
+        return {
+            "status": "error",
+            "error_message": f"The name '{name}' does not appear in the user's message. "
+            "Do not correct or change compound names; ask the user to "
+            "confirm the intended compound.",
         }
-    
+
     return None
