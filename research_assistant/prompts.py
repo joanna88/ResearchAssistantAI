@@ -38,8 +38,9 @@ When a tool accepts multiple SMILES, send all relevant SMILES in one call.
 
 COMPOUND LOOKUP
 If a required molecule is provided only by name or identifier, call lookup_compound_by_name 
-first to retrieve its SMILES. Use the returned SMILES exactly as provided; 
-do not modify, correct, or reconstruct it.
+first to retrieve its SMILES. Always pass the compound name exactly as the user wrote it to 
+`lookup_compound_by_name`; do not translate it to a synonym, IUPAC name, or other name. 
+Use the returned SMILES exactly as provided; do not modify, correct, or reconstruct it.
 
 For multiple compound names, call lookup_compound_by_name separately for each name. 
 These lookups may be performed in parallel.

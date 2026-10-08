@@ -56,4 +56,8 @@ Another failure mode occurred when a misspelled compound name was provided. Afte
 
 **Next:** enforce this behavior at the application or tool level so that a failed name lookup requires user clarification before another lookup can be performed.
 
+**Fix:** a before_tool_callback blocks lookups for names that don't appear in the user's message. With the prompt alone, 1 of 4 sessions passed; with the guard, 4 of 4. It also blocks synonym substitution, as in the (S)-ibuprofen case.
+
+**Known limitation:** PubChem's first match can be a different form of the compound, e.g. (S)-ibuprofen → the anion.
+
 ## Future work
