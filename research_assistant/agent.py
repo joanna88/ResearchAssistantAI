@@ -10,6 +10,7 @@ from mcp import StdioServerParameters
 
 from research_assistant.prompts import CHEM_AGENT_INSTRUCTION
 from research_assistant.tools.chem_tools import assess_druglikeness, tanimoto_similarity
+from research_assistant.callbacks import guard_compound_lookup
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -33,4 +34,5 @@ root_agent = Agent(name="research_assistant",
 
                    instruction=CHEM_AGENT_INSTRUCTION,
                    tools=[assess_druglikeness, tanimoto_similarity, mcp_toolset],
+                   before_tool_callback=guard_compound_lookup
                    )
