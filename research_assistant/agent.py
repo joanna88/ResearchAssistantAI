@@ -1,12 +1,6 @@
-import sys
-
-from pathlib import Path
 from google.adk.agents import Agent
 from google.adk.models import Gemini
-from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 from google.genai import types
-from mcp import StdioServerParameters
 
 from research_assistant.prompts import CHEM_AGENT_INSTRUCTION
 from research_assistant.tools.chem_tools import assess_druglikeness, tanimoto_similarity
@@ -33,12 +27,14 @@ root_agent = Agent(
         assess_druglikeness,
         tanimoto_similarity,
         ingest_literature,
-        search_literature
+        search_literature,
     ],
     before_tool_callback=guard_compound_lookup,
 )
 
 
 from research_assistant.sub_agents.chem_data_agent import chem_data_agent
+from research_assistant.sub_agents.analysis_agent import analysis_agent
+from research_assistant.sub_agents.literature_agent import literature_agent
 
-root_agent = chem_data_agent  # TEMPORARY: test the specialist alone
+root_agent = literature_agent  # TEMPORARY
