@@ -20,7 +20,7 @@ mcp_toolset = McpToolset(
         server_params=StdioServerParameters(
             command=sys.executable, args=["-m", "mcp_server.server"], cwd=PROJECT_ROOT
         ),
-        timeout=20,
+        timeout=60,
     )
 )
 
