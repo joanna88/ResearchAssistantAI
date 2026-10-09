@@ -129,3 +129,92 @@ def add_papers(papers: list[dict]) -> dict:
         "already_stored": len(existing),
         "total_in_store": collection.count(),
     }
+
+
+def search_papers(question: str, k: int = 5) -> dict:
+    """Search stored scientific papers using semantic similarity.
+
+    Embeds the input question and retrieves the most similar paper abstracts
+    from the persistent ChromaDB collection using cosine distance.
+
+    Args:
+        question: Natural-language query used for semantic retrieval.
+        k: Maximum number of papers to return (1-10). Defaults to 5.
+
+    Returns:
+        dict: Search status and retrieval results:
+            - status: "success", "not_found", or "error".
+            - question: Original search query.
+            - count: Number of retrieved papers.
+            - papers: List of papers containing publication ID, title, authors,
+            journal, year, PMID, DOI, URL, abstract, and similarity score.
+            - error_message: Description of the issue when applicable.
+
+    Notes:
+        - Uses RETRIEVAL_QUERY embeddings for the input question.
+        - Similarity is calculated as 1 minus cosine distance.
+        - Results are limited by the number of papers in the collection.
+        - Similarity indicates semantic relevance, not factual support
+        for a scientific claim.
+        - An empty collection returns "not_found" without querying embeddings.
+    """
+
+    if not question.strip():
+        return {
+            "status": "error",
+            "question": question,
+            "error_message": "Question cannot be empty.",
+        }
+
+    if k < 1 or k > 10:
+        return {
+            "status": "error",
+            "question": question,
+            "error_message": "k must be between 1 and 10.",
+        }
+
+    collection = _get_collection()
+
+    if collection.count() == 0:
+        return {
+            "status": "not_found",
+            "question": question,
+            "error_message": "The literature store is empty; add papers first.",
+        }
+
+    query_vector = _embed([question], "RETRIEVAL_QUERY")[0]
+
+    results = collection.query(
+        query_embeddings=[query_vector],
+        n_results=min(k, collection.count()),
+        include=["documents", "metadatas", "distances"],
+    )
+
+    ids = results["ids"][0]
+    documents = results["documents"][0]
+    metadatas = results["metadatas"][0]
+    distances = results["distances"][0]
+
+    papers = []
+    for pub_id, abstract, meta, distance in zip(ids, documents, metadatas, distances):
+        papers.append(
+            {
+                "pub_id": pub_id,
+                "title": meta.get("title"),
+                "link": meta.get("link"),
+                "authors": meta.get("authors"),
+                "journal": meta.get("journal"),
+                "year": meta.get("year"),
+                "pmid": meta.get("pmid"),
+                "doi": meta.get("doi"),
+                "abstract": abstract,
+                "similarity": round(1 - distance, 3),
+            }
+        )
+
+    return {
+        "status": "success",
+        "question": question,
+        "count": len(papers),
+        "papers": papers,
+    }

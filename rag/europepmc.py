@@ -1,6 +1,7 @@
 import httpx
 import re
 
+
 def _clean_text(text):
     """Remove HTML tags and normalize whitespace in text.
 
@@ -131,7 +132,7 @@ def search_europepmc(query: str, limit: int = 10) -> dict:
                     "pmid": pmid,
                     "pmcid": pmcid,
                     "doi": doi,
-                    "title": _clean_text(result.get("title")) or "",
+                    "title": _clean_text(result.get("title") or ""),
                     "authors": result.get("authorString"),
                     "journal": (result.get("journalInfo") or {})
                     .get("journal", {})
