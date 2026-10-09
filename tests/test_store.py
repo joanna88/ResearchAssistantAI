@@ -47,22 +47,22 @@ def test_add_papers_stores_new_papers(fake_store):
 
 def test_add_papers_skips_already_stored(fake_store):
     papers = [make_paper("MED:1"), make_paper("MED:2")]
-    store.add_papers(papers)              
-    result = store.add_papers(papers)     
+    store.add_papers(papers)
+    result = store.add_papers(papers)
 
     assert result["added"] == 0
     assert result["already_stored"] == 2
-    assert result["total_in_store"] == 2 
-    assert len(fake_store) == 1           
+    assert result["total_in_store"] == 2
+    assert len(fake_store) == 1
 
 
 def test_add_papers_partial_overlap(fake_store):
     store.add_papers([make_paper("MED:A"), make_paper("MED:B")])
     result = store.add_papers([make_paper("MED:B"), make_paper("MED:C")])
 
-    assert result["added"] == 1          
-    assert result["already_stored"] == 1  
-    assert result["total_in_store"] == 3  
+    assert result["added"] == 1
+    assert result["already_stored"] == 1
+    assert result["total_in_store"] == 3
 
 
 def test_search_papers_empty_store(fake_store):
@@ -72,8 +72,12 @@ def test_search_papers_empty_store(fake_store):
 
 
 def test_search_papers_returns_results(fake_store):
-    store.add_papers([make_paper("MED:1", title="KRAS paper"),
-                      make_paper("MED:2", title="EGFR paper")])
+    store.add_papers(
+        [
+            make_paper("MED:1", title="KRAS paper"),
+            make_paper("MED:2", title="EGFR paper"),
+        ]
+    )
 
     result = store.search_papers("anything", k=1)
 
@@ -85,7 +89,9 @@ def test_search_papers_returns_results(fake_store):
     assert "similarity" in paper
 
 
-@pytest.mark.parametrize("question, k", [("", 3), ("   ", 3), ("KRAS", 0), ("KRAS", 11)])
+@pytest.mark.parametrize(
+    "question, k", [("", 3), ("   ", 3), ("KRAS", 0), ("KRAS", 11)]
+)
 def test_search_papers_invalid_input(fake_store, question, k):
     result = store.search_papers(question, k)
 
