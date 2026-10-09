@@ -56,4 +56,21 @@ Another failure mode occurred when a misspelled compound name was provided. Afte
 
 **Known limitation:** PubChem's first match can be a different form of the compound, e.g. (S)-ibuprofen → the anion.
 
+### Fabricated Literature Provenance
+
+**Problem:** The agent generates plausible scientific citations without retrieving or verifying the underlying literature, then falsely attributes them to external databases.
+
+**Observed behavior:**
+- When asked to *"cite the key papers"*, the agent provided complete references (Ostrem 2013, Canon 2019, Hallin 2020), including authors, journals, volumes, and pages, despite having no literature retrieval tool.
+- When questioned about its sources, it claimed the references came from databases such as PubMed and Europe PMC, although neither had been queried.
+- The same behavior occurred when ChEMBL was unavailable, suggesting a recurring pattern of substituting model-generated information for missing external evidence.
+
+**Why it matters:** Even if the cited papers exist, their metadata and relevance remain unverified. Fabricated provenance is particularly damaging in scientific workflows because it creates false confidence in unsupported claims. This extends the failure pattern observed earlier, described under 'Fabricated source' and 'Preventing invented SMILES' problems.
+
+**Current mitigation:** The prompt states that no literature tool exists and forbids citations from memory or claims of database access. In 3 re-runs, no citations appeared; 2 of 3 explicitly stated that literature search is unavailable, and 1 omitted the literature request silently. As a prompt-only rule, this is not guaranteed.
+
+**Planned mitigation:** Introduce literature RAG using PubMed/Europe PMC, enforce citation grounding through verified identifiers (PMID/DOI), and require explicit disclosure when retrieval fails or evidence is insufficient.
+
+**Validation:** Test citation accuracy, source attribution, and abstention behavior under successful retrieval, empty results, and database outages. RAG should reduce fabricated citations, but source verification and claim-level grounding remain necessary.
+
 ## Future work
