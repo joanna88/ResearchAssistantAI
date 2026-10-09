@@ -61,17 +61,18 @@ Another failure mode occurred when a misspelled compound name was provided. Afte
 **Problem:** The agent generates plausible scientific citations without retrieving or verifying the underlying literature, then falsely attributes them to external databases.
 
 **Observed behavior:**
+
 - When asked to *"cite the key papers"*, the agent provided complete references (Ostrem 2013, Canon 2019, Hallin 2020), including authors, journals, volumes, and pages, despite having no literature retrieval tool.
-- When questioned about its sources, it claimed the references came from databases such as PubMed and Europe PMC, although neither had been queried.
-- The same behavior occurred when ChEMBL was unavailable, suggesting a recurring pattern of substituting model-generated information for missing external evidence.
+- When questioned about its sources, it claimed the references came from PubMed and Europe PMC, although neither had been queried.
+- Similar behavior occurred when ChEMBL was unavailable, indicating a recurring tendency to substitute model-generated information for missing evidence.
 
-**Why it matters:** Even if the cited papers exist, their metadata and relevance remain unverified. Fabricated provenance is particularly damaging in scientific workflows because it creates false confidence in unsupported claims. This extends the failure pattern observed earlier, described under 'Fabricated source' and 'Preventing invented SMILES' problems.
+**Why it matters:** Plausible citations can still have unverified metadata or fail to support the claims attached to them. Fabricated provenance creates false confidence in scientific conclusions and extends the earlier *Fabricated source* and *Preventing invented SMILES* failure patterns.
 
-**Current mitigation:** The prompt states that no literature tool exists and forbids citations from memory or claims of database access. In 3 re-runs, no citations appeared; 2 of 3 explicitly stated that literature search is unavailable, and 1 omitted the literature request silently. As a prompt-only rule, this is not guaranteed.
+**Fix:** Implemented literature RAG using Europe PMC retrieval, Gemini embeddings, and persistent ChromaDB storage. The agent first calls `ingest_literature` to retrieve and store papers, then `search_literature` to retrieve relevant abstracts. The prompt restricts citations to papers returned by `search_literature` in the current conversation, requires abstract-level support for each cited claim, and prohibits citations from memory or false database-access claims. References contain only retrieved titles, years, and links.
 
-**Planned mitigation:** Introduce literature RAG using PubMed/Europe PMC, enforce citation grounding through verified identifiers (PMID/DOI), and require explicit disclosure when retrieval fails or evidence is insufficient.
+**Similarity threshold decision:** No fixed similarity-score threshold is used. Semantic similarity ranks candidate papers, but citation eligibility depends on whether the retrieved abstract supports the specific statement. If no abstract provides relevant evidence, the agent must abstain rather than cite the closest match.
 
-**Validation:** Test citation accuracy, source attribution, and abstention behavior under successful retrieval, empty results, and database outages. RAG should reduce fabricated citations, but source verification and claim-level grounding remain necessary.
+**Validation:** In the retrieval test, **15 of 15 citations were retrieved**, including the Ostrem paper (**PMID 24256730**), which was found through retrieval rather than recalled from model knowledge. This addresses the previously observed fabricated-provenance behavior in that test, but does not guarantee claim-level accuracy in every response. Further validation should cover unsupported claims, empty retrieval results, and database failures.
 
 ### Compressed similarity scores
 Similarity scores were too compressed (0.64 off-topic vs 0.71 same-field) for a reliable fixed threshold on a small store; relevance is judged from the abstracts instead.

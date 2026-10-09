@@ -1,5 +1,6 @@
 import httpx
 import re
+import html
 
 
 def _clean_text(text):
@@ -13,6 +14,7 @@ def _clean_text(text):
         collapsed into single spaces.
     """
 
+    text = html.unescape(text)
     text = re.sub(r"<[^>]+>", " ", text)
     text = " ".join(text.split())
 
