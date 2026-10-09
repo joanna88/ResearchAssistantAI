@@ -3,6 +3,7 @@ name = "researchassistantai"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "chromadb>=1.5.9",
     "google-adk>=2.11.0",
     "httpx>=0.28.1",
     "mcp>=2.3.0",

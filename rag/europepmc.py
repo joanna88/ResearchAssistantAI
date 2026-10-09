@@ -1,6 +1,22 @@
 import httpx
 import re
 
+def _clean_text(text):
+    """Remove HTML tags and normalize whitespace in text.
+
+    Args:
+        text (str): Input text to clean.
+
+    Returns:
+        str: Text with HTML tags removed and consecutive whitespace
+        collapsed into single spaces.
+    """
+
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = " ".join(text.split())
+
+    return text
+
 
 def search_europepmc(query: str, limit: int = 10) -> dict:
     """Search Europe PMC for scientific publications matching a query.
@@ -115,7 +131,7 @@ def search_europepmc(query: str, limit: int = 10) -> dict:
                     "pmid": pmid,
                     "pmcid": pmcid,
                     "doi": doi,
-                    "title": re.sub(r"<[^>]+>", "", result.get("title")) or "",
+                    "title": _clean_text(result.get("title")) or "",
                     "authors": result.get("authorString"),
                     "journal": (result.get("journalInfo") or {})
                     .get("journal", {})
@@ -123,7 +139,7 @@ def search_europepmc(query: str, limit: int = 10) -> dict:
                     "year": result.get("pubYear"),
                     "cited_by": result.get("citedByCount"),
                     "link": link,
-                    "abstract": re.sub(r"<[^>]+>", "", result.get("abstractText")),
+                    "abstract": _clean_text(result.get("abstractText")),
                 }
             )
 
