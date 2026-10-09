@@ -102,7 +102,9 @@ def search_targets(query: str, limit: int = 10) -> dict:
         }
 
 
-def get_target_activities(target_chembl_id: str, limit: int = 10) -> dict:
+def get_target_activities(
+    target_chembl_id: str, limit: int = 10, mutation: str | None = None
+) -> dict:
     """Retrieve compounds with reported activities for a ChEMBL target.
 
     Use this tool after identifying a target with `search_targets`. Use only
@@ -110,38 +112,43 @@ def get_target_activities(target_chembl_id: str, limit: int = 10) -> dict:
     modify, or guess a ChEMBL target ID.
 
     Results are ranked by the best reported pChEMBL value for each unique molecule.
-    Multiple activity measurements may exist for the same molecule; the best single
-    pChEMBL measurement is returned together with the number of measurements found
-    in the retrieved activity records.
+    The highest-ranked measurement is returned along with the number of measurements
+    found for that molecule in the retrieved activity records.
 
     Activity values may come from different assays and experimental conditions and
-    are not necessarily directly comparable. Before making potency comparisons,
-    consider the activity type, value, units, assay ID, and assay context. Pay
-    particular attention to `mutation`: measurements against mutated or variant
-    targets may not be comparable to measurements against the wild-type target.
-    A higher pChEMBL value alone should not be treated as evidence that one compound
-    is definitively more potent, selective, effective, or clinically useful than
-    another.
+    are not necessarily directly comparable. Consider activity type, value, units,
+    assay ID, and mutation context before comparing compounds. A higher pChEMBL
+    value alone does not establish superior potency, selectivity, or efficacy.
 
-    The returned `smiles` values come directly from ChEMBL and may be used as
-    reliable SMILES inputs for `assess_druglikeness` and `tanimoto_similarity`.
-    Use them exactly as returned; do not modify or reconstruct them.
+    If `mutation` is provided, `matches_mutation` indicates whether the selected
+    activity record's mutation annotation contains the requested mutation
+    (case-insensitive). `mutation_summary` counts matching compounds among the
+    returned results. Missing or non-matching annotations do not establish
+    wild-type activity. Mutation matching does not filter or reorder results.
+    Do not claim mutation-specific activity based on a non-matching annotation.
+
+    The returned `smiles` values come directly from ChEMBL and may be passed to
+    `assess_druglikeness` and `tanimoto_similarity`. Use them exactly as returned;
+    do not modify, reconstruct, or invent SMILES.
 
     Args:
         target_chembl_id: ChEMBL target ID returned by `search_targets`,
-                e.g. "CHEMBL203".
+            e.g. "CHEMBL203".
         limit: Maximum number of unique compounds to return (1-25).
             Defaults to 10.
+        mutation: Optional mutation to check, e.g. "G12C".
+            Matching is case-insensitive substring matching.
 
     Returns:
-        Search status and unique compounds associated with the target. Successful
-        results contain compounds ranked by their best single pChEMBL value, with
-        SMILES, activity type and value, units, assay ID, mutation information,
-        publication year, and the number of measurements found in the retrieved
-        activity records.
+        Search status and compounds ranked by their best retrieved pChEMBL value.
+        Each compound includes SMILES, activity details, assay ID, mutation
+        annotation, `matches_mutation`, publication year, and measurement count.
+        When a mutation is requested, the response also includes
+        `requested_mutation` and `mutation_summary`.
     """
 
     target_chembl_id = target_chembl_id.strip().upper()
+    mutation = mutation.strip().upper() if mutation else None
 
     if not target_chembl_id:
         return {
@@ -239,11 +246,23 @@ def get_target_activities(target_chembl_id: str, limit: int = 10) -> dict:
                         "https://www.ebi.ac.uk/chembl/explore/compound/"
                         f"{molecule_chembl_id}"
                     ),
+                    "matches_mutation": (
+                        mutation
+                        in (activity.get("assay_variant_mutation") or "").upper()
+                        if mutation
+                        else None
+                    ),
                 }
             else:
                 molecules[molecule_chembl_id]["n_top_measurements"] += 1
 
         results = list(molecules.values())[:limit]
+
+        mutation_summary = None
+
+        if mutation:
+            n_matching = sum(c["matches_mutation"] for c in results)
+            mutation_summary = f"{n_matching} of {len(results)} results annotated with {mutation} (results are not filtered by mutation)"
 
         return {
             "status": "success",
@@ -252,6 +271,8 @@ def get_target_activities(target_chembl_id: str, limit: int = 10) -> dict:
             "count": len(results),
             "ranking": "best single pChEMBL per molecule",
             "compounds": results,
+            "requested_mutation": mutation,
+            "mutation_summary": mutation_summary,
         }
 
     except httpx.RequestError as e:

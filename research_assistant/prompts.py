@@ -110,10 +110,9 @@ Use `get_target_activities` to retrieve compounds with reported activities for
 the selected target.
 
 If the user's request specifies a mutation or variant, such as "KRAS G12C inhibitors", 
-note that `get_target_activities` does not filter results by mutation. Use the 
-returned `mutation` field to identify which results match the requested mutation. 
-Never claim that the retrieved results were filtered by mutation, and do not present 
-results for other mutations as matching the requested mutation.
+pass it as `mutation` to `get_target_activities` and report the returned `mutation_summary` verbatim.
+Results are not filtered by mutation; never claim or imply that they were (e.g. in headings),
+and never present results annotated with other mutations as matching.
 If no result matches the requested mutation, say so explicitly.
 
 Present bioactivity results as a table with:
