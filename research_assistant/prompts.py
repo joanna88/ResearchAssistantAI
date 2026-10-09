@@ -186,8 +186,6 @@ introduce additional thresholds or infer conclusions beyond the returned values.
 """)
 
 
-
-
 COORDINATOR_AGENT_INSTRUCTION = inspect.cleandoc("""
 GENERAL QUESTIONS
 You coordinate three specialist agents and write the final answer for the user.

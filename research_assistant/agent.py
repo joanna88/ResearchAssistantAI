@@ -17,18 +17,6 @@ from research_assistant.tools.literature_tools import (
 )
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-mcp_toolset = McpToolset(
-    connection_params=StdioConnectionParams(
-        server_params=StdioServerParameters(
-            command=sys.executable, args=["-m", "mcp_server.server"], cwd=PROJECT_ROOT
-        ),
-        timeout=60,
-    )
-)
-
-
 root_agent = Agent(
     name="research_assistant",
     model=Gemini(
@@ -45,8 +33,12 @@ root_agent = Agent(
         assess_druglikeness,
         tanimoto_similarity,
         ingest_literature,
-        search_literature,
-        mcp_toolset,
+        search_literature
     ],
     before_tool_callback=guard_compound_lookup,
 )
+
+
+from research_assistant.sub_agents.chem_data_agent import chem_data_agent
+
+root_agent = chem_data_agent  # TEMPORARY: test the specialist alone
