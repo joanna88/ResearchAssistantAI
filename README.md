@@ -73,4 +73,7 @@ Another failure mode occurred when a misspelled compound name was provided. Afte
 
 **Validation:** Test citation accuracy, source attribution, and abstention behavior under successful retrieval, empty results, and database outages. RAG should reduce fabricated citations, but source verification and claim-level grounding remain necessary.
 
+### Compressed similarity scores
+Similarity scores were too compressed (0.64 off-topic vs 0.71 same-field) for a reliable fixed threshold on a small store; relevance is judged from the abstracts instead.
+
 ## Future work
