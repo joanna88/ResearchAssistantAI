@@ -33,7 +33,9 @@ root_agent = Agent(
             initial_delay=1, attempts=5, http_status_codes=[429, 500, 503, 504]
         ),
     ),
-    description="A research assistant for evaluating molecular properties, drug-likeness metrics and compute structural similarity from SMILES strings.",
+    description="A drug-discovery research assistant for compound and target lookup, "
+    "bioactivity analysis, molecular property and drug-likeness evaluation, "
+    "and structural similarity analysis.",
     instruction=CHEM_AGENT_INSTRUCTION,
     tools=[assess_druglikeness, tanimoto_similarity, mcp_toolset],
     before_tool_callback=guard_compound_lookup,
