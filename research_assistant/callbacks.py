@@ -2,6 +2,9 @@ import re
 import json
 
 from google.adk.tools import BaseTool, ToolContext
+from google.adk.agents.callback_context import CallbackContext
+from google.adk.models import LlmResponse
+from google.genai import types
 
 from research_assistant.tools.chem_tools import _clean_smiles
 
@@ -269,3 +272,41 @@ def record_mutation_summary(
     if summary:
         tool_context.state["mutation_summary"] = summary
     return None
+
+
+def append_mutation_summary(
+    callback_context: CallbackContext,
+    llm_response: LlmResponse,
+) -> LlmResponse | None:
+    """Append the stored ChEMBL mutation summary if missing from the final response.
+
+    Args:
+        callback_context: Context containing the stored mutation summary.
+        llm_response: Model response to inspect and optionally modify.
+
+    Returns:
+        Modified LLM response if the mutation summary is appended, otherwise None.
+    """
+
+    summary = callback_context.state.get("mutation_summary")
+
+    if not summary or llm_response.partial:
+        return None
+
+    content = llm_response.content
+
+    if not content or not content.parts:
+        return None
+
+    if any(part.function_call for part in content.parts):
+        return None
+
+    text = "".join(part.text or "" for part in content.parts)
+
+    if summary in text:
+        return None
+
+    content.parts.append(
+        types.Part(text=f"\n\n**Mutation note (from ChEMBL):** {summary}")
+    )
+    return llm_response

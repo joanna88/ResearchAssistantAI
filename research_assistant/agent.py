@@ -6,7 +6,7 @@ from research_assistant.prompts import COORDINATOR_AGENT_INSTRUCTION
 from research_assistant.sub_agents.analysis_agent import analysis_agent
 from research_assistant.sub_agents.chem_data_agent import chem_data_agent
 from research_assistant.sub_agents.literature_agent import literature_agent
-from research_assistant.callbacks import save_user_message
+from research_assistant.callbacks import save_user_message, append_mutation_summary
 
 
 root_agent = Agent(
@@ -22,4 +22,5 @@ root_agent = Agent(
         AgentTool(analysis_agent),
         AgentTool(literature_agent),
     ],
+    after_model_callback=append_mutation_summary,
 )

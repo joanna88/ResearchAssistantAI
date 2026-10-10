@@ -1,5 +1,10 @@
 import pytest
 import json
+
+from types import SimpleNamespace
+from google.genai import types
+from google.adk.models.llm_response import LlmResponse
+
 from research_assistant.callbacks import (
     name_in_texts,
     guard_compound_lookup,
@@ -9,9 +14,8 @@ from research_assistant.callbacks import (
     smiles_in_user_text,
     guard_trusted_smiles,
     record_mutation_summary,
+    append_mutation_summary,
 )
-from types import SimpleNamespace
-from google.genai import types
 
 
 # testing name_in_text function
@@ -161,6 +165,7 @@ def test_guard_image_in_text():
 
 
 # testing save_user_message
+
 
 def test_save_user_message_stores_text():
 
@@ -423,3 +428,68 @@ def test_record_mutation_summary_ignores_other_tools():
     )
 
     assert "mutation_summary" not in context.state
+
+
+# testing append_mutation_summary
+SUMMARY = "0 of 10 results annotated with G12C (results are not filtered by mutation)"
+
+
+def make_response(*parts, partial=False):
+    return LlmResponse(
+        content=types.Content(role="model", parts=list(parts)), partial=partial
+    )
+
+
+def test_append_summary_when_missing():
+
+    context = SimpleNamespace(state={"mutation_summary": SUMMARY})
+    response = make_response(
+        types.Part(text="Here are the most potent KRAS compounds.")
+    )
+
+    result = append_mutation_summary(context, response)
+
+    assert result is not None
+    final_text = "".join(p.text or "" for p in result.content.parts)
+    assert SUMMARY in final_text
+
+
+def test_no_append_when_already_included():
+
+    context = SimpleNamespace(state={"mutation_summary": SUMMARY})
+    response = make_response(types.Part(text=f"Results below. {SUMMARY}"))
+
+    result = append_mutation_summary(context, response)
+
+    assert result is None
+
+
+def test_no_append_to_function_call():
+
+    context = SimpleNamespace(state={"mutation_summary": SUMMARY})
+    call = types.Part(function_call=types.FunctionCall(name="analysis_agent", args={"request": "..."}))
+    response = make_response(call)
+
+    result = append_mutation_summary(context, response)
+
+    assert result is None
+
+
+def test_no_append_without_summary():
+
+    context = SimpleNamespace(state={"mutation_summary": None})
+    response = make_response(types.Part(text="Aspirin has a molecular weight of 180.16 Da."))
+
+    result = append_mutation_summary(context, response)
+
+    assert result is None
+
+
+def test_no_append_to_partial_response():
+    
+    context = SimpleNamespace(state={"mutation_summary": SUMMARY})
+    response = make_response(types.Part(text="Here are the most"), partial=True)
+
+    result = append_mutation_summary(context, response)
+
+    assert result is None
