@@ -1,5 +1,12 @@
 import pytest
-from research_assistant.callbacks import name_in_texts, guard_compound_lookup, save_user_message
+import json
+from research_assistant.callbacks import (
+    name_in_texts,
+    guard_compound_lookup,
+    save_user_message,
+    extract_smiles,
+    record_trusted_smiles,
+)
 from types import SimpleNamespace
 from google.genai import types
 
@@ -152,10 +159,12 @@ def test_guard_image_in_text():
 
 # testing save_user_message
 
+
 def test_save_user_message_stores_text():
 
-    content = types.Content(role="user", 
-                            parts=[types.Part(text="Is sotorasibb drug-like?")])
+    content = types.Content(
+        role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
+    )
     context = SimpleNamespace(user_content=content, state={})
 
     save_user_message(context)
@@ -164,11 +173,15 @@ def test_save_user_message_stores_text():
 
 
 def test_guard_uses_saved_user_message():
-   
-    content = types.Content(role="user", parts=[types.Part(text="Get SMILES for sotorasib")])
-  
-    context = SimpleNamespace(user_content=content,
-                              state={"original_user_message": "Is sotorasibb drug-like?"})
+
+    content = types.Content(
+        role="user", parts=[types.Part(text="Get SMILES for sotorasib")]
+    )
+
+    context = SimpleNamespace(
+        user_content=content,
+        state={"original_user_message": "Is sotorasibb drug-like?"},
+    )
     tool = SimpleNamespace(name="lookup_compound_by_name")
 
     result = guard_compound_lookup(tool, {"name": "sotorasib"}, context)
@@ -178,11 +191,66 @@ def test_guard_uses_saved_user_message():
 
 
 def test_guard_falls_back_to_user_content():
-    content = types.Content(role="user", parts=[types.Part(text="Is aspirin drug-like?")])
-    context = SimpleNamespace(user_content=content, state={})  
+    content = types.Content(
+        role="user", parts=[types.Part(text="Is aspirin drug-like?")]
+    )
+    context = SimpleNamespace(user_content=content, state={})
     tool = SimpleNamespace(name="lookup_compound_by_name")
 
     result = guard_compound_lookup(tool, {"name": "aspirin"}, context)
 
     assert result is None
 
+
+def test_extract_smiles_from_lookup():
+
+    data = {"status": "success", "smiles": "CCO", "cid": 702}
+
+    assert extract_smiles("lookup_compound_by_name", data) == ["CCO"]
+
+
+def test_extract_smiles_lookup_not_found():
+
+    data = {"status": "not_found", "query": "xyz"}
+
+    assert extract_smiles("lookup_compound_by_name", data) == []
+
+
+def test_extract_smiles_from_activities():
+
+    data = {
+        "status": "success",
+        "compounds": [{"smiles": "CCO"}, {"name": "no smiles"}, {"smiles": "CCN"}],
+    }
+
+    assert extract_smiles("get_target_activities", data) == ["CCO", "CCN"]
+
+
+def test_extract_smiles_other_tool():
+
+    assert extract_smiles("search_targets", {"targets": []}) == []
+
+
+def test_record_trusted_smiles_adds_to_state():
+
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+    response = {
+        "content": [
+            {"type": "text", "text": json.dumps({"status": "success", "smiles": "CCO"})}
+        ]
+    }
+    context = SimpleNamespace(state={"trusted_smiles": ["CCN"]})
+
+    record_trusted_smiles(tool, {}, context, response)
+
+    assert context.state["trusted_smiles"] == ["CCN", "CCO"]
+
+
+def test_record_trusted_smiles_ignores_unexpected_response():
+
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+    context = SimpleNamespace(state={"trusted_smiles": ["CCN"]})
+
+    record_trusted_smiles(tool, {}, context, {})
+
+    assert context.state["trusted_smiles"] == ["CCN"]
