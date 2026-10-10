@@ -1,6 +1,9 @@
 import re
 import json
+
 from google.adk.tools import BaseTool, ToolContext
+
+from research_assistant.tools.chem_tools import _clean_smiles
 
 
 def name_in_texts(name: str, texts: list[str]) -> bool:
@@ -120,5 +123,98 @@ def record_trusted_smiles(
     if new:
         existing = tool_context.state.get("trusted_smiles", [])
         tool_context.state["trusted_smiles"] = existing + new
+
+    return None
+
+
+def smiles_in_user_text(text: str) -> set[str]:
+    """
+    Extract candidate SMILES tokens from user-provided text.
+
+    Splits the text on whitespace, commas, and semicolons, then removes common
+    surrounding delimiters and trailing sentence punctuation. The resulting
+    tokens can be used to check whether a SMILES passed to a tool was explicitly
+    present in the user's message.
+
+    This function does not validate whether the extracted tokens are chemically
+    valid SMILES.
+
+    Args:
+        text: User-provided text to tokenize.
+
+    Returns:
+        Set of cleaned candidate tokens from the text.
+    """
+
+    tokens = re.split(r"[\s,;]+", text)
+
+    return {_clean_smiles(t.rstrip(".?!")) for t in tokens if t}
+
+
+def guard_trusted_smiles(
+    tool: BaseTool, args: dict, tool_context: ToolContext
+) -> dict | None:
+    """
+    Guard RDKit tool calls against untrusted or altered SMILES.
+
+    Applies only to `assess_druglikeness` and `tanimoto_similarity`. Every
+    SMILES passed to these tools must come from one of two allowed sources:
+    it must either appear explicitly in the user's original message or have
+    been returned by an approved lookup tool and recorded in `trusted_smiles`.
+
+    Both `smiles_list` entries and `query_smiles` are checked. SMILES are
+    cleaned only for comparison with their trusted or user-provided forms.
+    This prevents the agent from inventing, reconstructing, correcting, or
+    altering SMILES before passing them to RDKit tools.
+
+    Args:
+        tool: Tool being called.
+        args: Arguments the agent intends to pass to the tool.
+        tool_context: Tool context containing trusted SMILES and user-message
+            information.
+
+    Returns:
+        None if all requested SMILES have an allowed source or the guard does
+        not apply to the tool. Otherwise, an error dictionary identifying the
+        untrusted SMILES and blocking the tool call.
+    """
+
+    if tool.name not in ("assess_druglikeness", "tanimoto_similarity"):
+        return None
+
+    # collect every SMILES the LLM wants to use in this call
+    smiles_list = args.get("smiles_list", [])
+
+    if isinstance(smiles_list, str):
+        smiles_list = [smiles_list]
+    requested = list(smiles_list)
+
+    if args.get("query_smiles"):
+        requested.append(args["query_smiles"])
+
+    # checking the two allowed sources
+    trusted = set(tool_context.state.get("trusted_smiles", []))
+    user_text = tool_context.state.get("original_user_message") or ""
+
+    if not user_text and tool_context.user_content is not None:
+        user_text = "\n".join(p.text for p in tool_context.user_content.parts if p.text)
+
+    user_tokens = smiles_in_user_text(user_text)
+
+    untrusted = [
+        s
+        for s in requested
+        if _clean_smiles(s) not in trusted and _clean_smiles(s) not in user_tokens
+    ]
+
+    if untrusted:
+        return {
+            "status": "error",
+            "error_message": (
+                f"These SMILES were not returned by a lookup tool or given by the user "
+                f"(they may have been altered while copying): {untrusted}. "
+                "Use SMILES exactly as returned; do not retype, shorten, or correct them."
+            ),
+        }
 
     return None

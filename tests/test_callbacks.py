@@ -6,6 +6,8 @@ from research_assistant.callbacks import (
     save_user_message,
     extract_smiles,
     record_trusted_smiles,
+    smiles_in_user_text,
+    guard_trusted_smiles,
 )
 from types import SimpleNamespace
 from google.genai import types
@@ -202,6 +204,7 @@ def test_guard_falls_back_to_user_content():
     assert result is None
 
 
+# testing extract_smiles
 def test_extract_smiles_from_lookup():
 
     data = {"status": "success", "smiles": "CCO", "cid": 702}
@@ -231,6 +234,7 @@ def test_extract_smiles_other_tool():
     assert extract_smiles("search_targets", {"targets": []}) == []
 
 
+# testing record_trusted_smiles
 def test_record_trusted_smiles_adds_to_state():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
@@ -254,3 +258,98 @@ def test_record_trusted_smiles_ignores_unexpected_response():
     record_trusted_smiles(tool, {}, context, {})
 
     assert context.state["trusted_smiles"] == ["CCN"]
+
+
+# testing smiles_in_user_text
+def test_user_smiles_basic():
+
+    assert "CCO" in smiles_in_user_text("Is CCO drug-like?")
+
+
+def test_user_smiles_quotes_and_commas():
+
+    tokens = smiles_in_user_text('Compare "CCO", c1ccccc1; CCN')
+
+    assert {"CCO", "c1ccccc1", "CCN"} <= tokens
+
+
+def test_user_smiles_truncated_not_matched():
+
+    tokens = smiles_in_user_text("Check CC(=O)Oc1ccccc1C(=O)O please")
+
+    assert "CC(=O)Oc1ccccc1C(=O)O" in tokens
+    assert "CC(=O)Oc1ccccc1" not in tokens
+
+
+def test_user_smiles_quoted_at_sentence_end():
+
+    tokens = smiles_in_user_text('Check `CC(=O)O`. Is "CCO"?')
+
+    assert {"CC(=O)O", "CCO"} <= tokens
+
+
+# testing guard_trusted_smiles
+def make_context(state, user_text=None):
+    """Fake tool_context with the given state and (optionally) a user message."""
+
+    content = None
+    if user_text is not None:
+        content = types.Content(role="user", parts=[types.Part(text=user_text)])
+
+    return SimpleNamespace(state=state, user_content=content)
+
+
+ASSESS = SimpleNamespace(name="assess_druglikeness")
+
+
+def test_trusted_smiles_allowed():
+
+    context = make_context(state={"trusted_smiles": ["CCO"]})
+
+    result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CCO"]}, context)
+
+    assert result is None
+
+
+def test_user_typed_smiles_allowed():
+    
+    context = make_context(state={"original_user_message": "Is CCN drug-like?"})
+
+    result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CCN"]}, context)
+
+    assert result is None
+
+
+
+def test_truncated_smiles_blocked():
+
+    context = make_context(state={"trusted_smiles": ["CC(=O)Oc1ccccc1C(=O)O"]})
+
+    result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CC(=O)Oc1ccccc1"]}, context)
+
+    assert result is not None
+    assert result["status"] == "error"
+    assert "CC(=O)Oc1ccccc1" in result["error_message"]
+
+
+def test_untrusted_query_smiles_blocked():
+
+    tool = SimpleNamespace(name="tanimoto_similarity")
+    context = make_context(state={"trusted_smiles": ["CCO"]})
+
+    result = guard_trusted_smiles(
+        tool, {"query_smiles": "CCN", "smiles_list": ["CCO"]}, context
+    )
+
+    assert result is not None
+    assert "CCN" in result["error_message"]
+
+
+def test_other_tools_not_checked():
+
+    tool = SimpleNamespace(name="search_literature")
+    context = make_context(state={})
+
+    result = guard_trusted_smiles(tool, {"question": "anything"}, context)
+
+    assert result is None

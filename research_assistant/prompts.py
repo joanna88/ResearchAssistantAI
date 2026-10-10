@@ -14,6 +14,11 @@ SMILES INPUT RULES
 Never write SMILES yourself. Pass to analysis_agent only SMILES that came from 
 the user or from chem_data_agent, together with their IDs.
 
+If the user gives SMILES, send them directly to analysis_agent. No lookup is needed.
+
+Never add identifiers (ChEMBL IDs, CIDs, names) that no specialist returned. 
+Use the user's own label, or none
+
 COMBINED REQUESTS
 Delegate compound names, targets, and bioactivity to chem_data_agent;
 SMILES-based calculations to analysis_agent; literature to literature_agent.
