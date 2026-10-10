@@ -1,5 +1,5 @@
 import pytest
-from research_assistant.callbacks import name_in_texts, guard_compound_lookup
+from research_assistant.callbacks import name_in_texts, guard_compound_lookup, save_user_message
 from types import SimpleNamespace
 from google.genai import types
 
@@ -70,7 +70,7 @@ def test_guard_blocks_corrected_name():
     content = types.Content(
         role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
     )
-    context = SimpleNamespace(user_content=content)
+    context = SimpleNamespace(user_content=content, state={})
     args = {"name": "sotorasib"}
 
     result = guard_compound_lookup(tool, args, context)
@@ -86,7 +86,7 @@ def test_guard_allows_correct_name():
     content = types.Content(
         role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
     )
-    context = SimpleNamespace(user_content=content)
+    context = SimpleNamespace(user_content=content, state={})
     args = {"name": "sotorasibb"}
 
     result = guard_compound_lookup(tool, args, context)
@@ -100,7 +100,7 @@ def test_guard_allows_other_tools():
     content = types.Content(
         role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
     )
-    context = SimpleNamespace(user_content=content)
+    context = SimpleNamespace(user_content=content, state={})
     args = {"name": "sotorasibb"}
 
     result = guard_compound_lookup(tool, args, context)
@@ -111,7 +111,7 @@ def test_guard_allows_other_tools():
 def test_guard_no_user_message():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
-    context = SimpleNamespace(user_content=None)
+    context = SimpleNamespace(user_content=None, state={})
     args = {"name": "aspirin"}
 
     result = guard_compound_lookup(tool, args, context)
@@ -124,7 +124,7 @@ def test_guard_message_without_text():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
     content = types.Content(role="user", parts=[types.Part(text=None)])
-    context = SimpleNamespace(user_content=content)
+    context = SimpleNamespace(user_content=content, state={})
     args = {"name": "aspirin"}
 
     result = guard_compound_lookup(tool, args, context)
@@ -142,9 +142,47 @@ def test_guard_image_in_text():
             types.Part(text="Is aspirin drug-like?"),
         ],
     )
-    context = SimpleNamespace(user_content=content)
+    context = SimpleNamespace(user_content=content, state={})
     args = {"name": "aspirin"}
 
     result = guard_compound_lookup(tool, args, context)
 
     assert result is None
+
+
+# testing save_user_message
+
+def test_save_user_message_stores_text():
+
+    content = types.Content(role="user", 
+                            parts=[types.Part(text="Is sotorasibb drug-like?")])
+    context = SimpleNamespace(user_content=content, state={})
+
+    save_user_message(context)
+
+    assert context.state["original_user_message"] == "Is sotorasibb drug-like?"
+
+
+def test_guard_uses_saved_user_message():
+   
+    content = types.Content(role="user", parts=[types.Part(text="Get SMILES for sotorasib")])
+  
+    context = SimpleNamespace(user_content=content,
+                              state={"original_user_message": "Is sotorasibb drug-like?"})
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+
+    result = guard_compound_lookup(tool, {"name": "sotorasib"}, context)
+
+    assert result is not None
+    assert result["status"] == "error"
+
+
+def test_guard_falls_back_to_user_content():
+    content = types.Content(role="user", parts=[types.Part(text="Is aspirin drug-like?")])
+    context = SimpleNamespace(user_content=content, state={})  
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+
+    result = guard_compound_lookup(tool, {"name": "aspirin"}, context)
+
+    assert result is None
+

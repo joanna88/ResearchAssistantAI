@@ -36,16 +36,21 @@ def guard_compound_lookup(
     if tool.name != "lookup_compound_by_name":
         return None
 
-    if tool_context.user_content is None:
+    saved = tool_context.state.get("original_user_message")
+
+    if saved:                                  
+        texts = [saved]
+    elif tool_context.user_content is not None: 
+        texts = [part.text for part in tool_context.user_content.parts if part.text]
+    else:                                    
         return {
             "status": "error",
-            "error_message": "There is no user content. Ask the user to confirm the compound name",
+            "error_message": "There is no user message to check against. Ask the user to confirm the compound name.",
         }
 
-    parts = [part.text for part in tool_context.user_content.parts if part.text]
     name = args.get("name", "")
 
-    if name_in_texts(name, parts) is False:
+    if name_in_texts(name, texts) is False:
         return {
             "status": "error",
             "error_message": f"The name '{name}' does not appear in the user's message. "
@@ -54,3 +59,13 @@ def guard_compound_lookup(
         }
 
     return None
+
+
+def save_user_message(callback_context) -> None:
+    """Store the user's original message in state, so specialists can check against it."""
+
+    content = callback_context.user_content
+    texts = [part.text for part in content.parts if part.text] if content else []
+    callback_context.state["original_user_message"] = "\n".join(texts)
+
+    return None   
