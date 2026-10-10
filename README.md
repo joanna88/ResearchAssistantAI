@@ -63,7 +63,7 @@ Prompt instructions alone proved unreliable for some critical constraints—for 
 ### Installation
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/joanna88/ResearchAssistantAI
 cd ResearchAssistantAI
 uv sync
 cp .env.example .env
