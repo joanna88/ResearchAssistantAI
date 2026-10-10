@@ -109,10 +109,10 @@ The local literature vector store is created in `data/chroma_db/`. This director
 
 Example queries:
 
-- *"What is known about KRAS G12C inhibitors? Show the most potent compounds in ChEMBL, check their drug-likeness, and cite the key papers."*
+- *"What is known about KRAS G12C inhibitors? Show the most potent compounds in ChEMBL, check their drug-likeness, and cite the key papers."* — the full workflow: all three specialists in one answer.
 - *"Is sotorasib drug-like?"* — resolves the compound through PubChem and calculates molecular properties with RDKit.
 - *"Which of these is most similar to aspirin? CCO, OC(=O)c1ccccc1O, c1ccccc1"* — compares structures using Tanimoto similarity.
-- *"What resistance mechanisms to KRAS G12C inhibitors have been reported?"* — searches the ingested scientific literature.
+- *"What resistance mechanisms to KRAS G12C inhibitors have been reported?"* — retrieves relevant literature from Europe PMC, ingests it into the local vector store, and searches the retrieved evidence.
 - *"Is sotorasibb drug-like?"* — demonstrates the name safeguard: the agent asks the user to verify the compound name rather than silently correcting it.
 
 
