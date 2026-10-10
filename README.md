@@ -1,13 +1,105 @@
 # Research Assistant Agentic System
 
-The multi-agentic system that focuses on searching information on compound or drug target and gets relevant literature on it, like bioactivity data, properties, etc. 
+A multi-agent research system for drug-discovery workflows, built around three specialist agents: **chemical data**, **molecular analysis**, and **literature research**.
+
+The system searches and integrates information about compounds and biological targets, retrieves bioactivity data and relevant scientific literature, and performs molecular property, drug-likeness, and structural similarity analyses. A coordinator agent delegates tasks to the appropriate specialists and combines their results while preserving data provenance across the workflow.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    U[User] --> C[Coordinator<br/>research_assistant]
+    C -->|AgentTool| CH[chem_data_agent]
+    C -->|AgentTool| AN[analysis_agent]
+    C -->|AgentTool| LI[literature_agent]
+    CH --> MCP[MCP server<br/>PubChem · ChEMBL]
+    AN --> RD[RDKit tools<br/>drug-likeness · similarity]
+    LI --> RAG[Literature RAG<br/>Europe PMC → Gemini embeddings → ChromaDB]
+```
+
+| Agent | Tools | Responsibility |
+|---|---|---|
+| Coordinator (`research_assistant`) | `chem_data_agent`, `analysis_agent`, `literature_agent` (as AgentTools) | Interprets the user's question, delegates tasks to the appropriate specialist agents, and combines their returned results into a coherent final answer without inventing missing data. |
+| `chem_data_agent` | MCP: `lookup_compound_by_name`, `search_targets`, `get_target_activities` | Resolves compound names and biological targets using PubChem and ChEMBL. Returns trusted SMILES with source identifiers/URLs, target information, and reported bioactivity data. |
+| `analysis_agent` | `assess_druglikeness`, `tanimoto_similarity` (RDKit) | Calculates molecular properties, drug-likeness metrics, and fingerprint-based structural similarity from SMILES. Performs no compound or target lookups and accepts only trusted or user-provided SMILES. |
+| `literature_agent` | `ingest_literature`, `search_literature` | Fetches scientific abstracts from Europe PMC and ingests them into a local vector store. Searches the stored literature to answer research questions using retrieved evidence and provides citations to the source publications. |
 
 
-## How to run it
+### Why agents as tools
+
+ADK supports two main patterns for agent collaboration: **transfer**, where a specialist takes over the conversation and responds directly to the user, and **AgentTool**, where the coordinator invokes a specialist like a tool and receives its result. This system uses **AgentTool** because typical research questions require information from several specialists to be combined into a single response. With transfer, control moves between agents, making it harder for one coordinator to collect and integrate results from chemical data, molecular analysis, and literature research.
+
+AgentTool also keeps the coordinator's context relatively small. The coordinator receives specialists' summarized results rather than raw ChEMBL records, retrieved abstracts, or other intermediate tool outputs. In testing, the coordinator used **686 tokens on the first request**, compared with approximately **3,750 tokens** for the earlier single-agent implementation containing all tools.
+
+This architecture has trade-offs. The **total LLM cost can be higher** because each specialist makes its own model calls. The coordinator also **rewrites and summarizes specialist responses**, which creates a risk that details are omitted or changed (see the related design note below). Finally, specialists execute in temporary sessions, so their individual tool calls are **not visible in `adk web`**, making the internal workflow less transparent during interactive debugging.
+
+
+### Safeguards enforced in code
+
+Prompt instructions alone proved unreliable for some critical constraints—for example, correct handling occurred in only **1/4 tests for name correction** and **4/10 tests for required caveats**—so these rules are additionally enforced through ADK callbacks.
+
+- **Name guard (`guard_compound_lookup`)** — attached to `chem_data_agent` before tool calls. Guarantees that compound lookups use names actually present in the user's request, preventing the agent from silently correcting, substituting, or inventing a compound name before querying PubChem.
+
+- **Original message (`save_user_message`)** — attached to the coordinator before each turn. Guarantees that the user's original message is preserved and available to specialist safeguards, even when the coordinator reformulates the request while delegating it.
+
+- **SMILES provenance (`record_trusted_smiles` + `guard_trusted_smiles`)** — the chemical-data agent records trusted SMILES, and the analysis agent checks them before RDKit tool calls. Guarantees that analyzed SMILES were either explicitly supplied by the user or returned by an approved lookup tool. It also catches SMILES that were accidentally altered while being copied between agents, rather than allowing a modified but potentially valid structure to be analyzed.
+
+- **Mutation-summary fallback (`record_mutation_summary` + `append_mutation_summary`)** — the chemical-data agent records the ChEMBL mutation summary, and the coordinator appends it when necessary. Guarantees that important mutation/variant context from the bioactivity results is not silently lost when the coordinator produces the final response.
+
+
+## Setup and usage
+
+### Requirements
+
+- Python **3.12+**
+- [uv](https://docs.astral.sh/uv/)
+- A **Gemini API key** from Google AI Studio
+- An internet connection, as PubChem, ChEMBL, and Europe PMC are queried live
+
+### Installation
 
 ```bash
-adk web
+git clone <your-repo-url>
+cd ResearchAssistantAI
+uv sync
+cp .env.example .env
 ```
+
+Add your Gemini API key to the newly created `.env` file. The `.env` file is git-ignored and may contain secrets, so it should **never be committed to the repository**.
+
+### Running the agent
+
+```bash
+uv run adk web
+```
+
+Open the URL printed by ADK and select **`research_assistant`** from the agent dropdown.
+
+The MCP chemical-data server does not need to be started separately. The agent launches it automatically as a subprocess when needed.
+
+
+### Running the tests
+
+```bash
+uv run pytest
+```
+
+The test suite runs offline and does not require a Gemini API key. External HTTP requests and embedding operations are mocked, making the repository straightforward to test without access to the external services.
+
+### Trying the MCP server on its own
+
+The MCP server can also be tested independently of the agent system:
+
+```bash
+uv run python scripts/try_mcp_client.py
+```
+
+This script connects directly to the MCP server, lists its available tools, and makes several test calls requires internet access, but no API key.
+
+### Data storage
+
+The local literature vector store is created in `data/chroma_db/`. This directory is git-ignored and is populated as literature is ingested while using the agent.
+
 
 
 ## Examples

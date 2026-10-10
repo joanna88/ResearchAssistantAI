@@ -467,7 +467,9 @@ def test_no_append_when_already_included():
 def test_no_append_to_function_call():
 
     context = SimpleNamespace(state={"mutation_summary": SUMMARY})
-    call = types.Part(function_call=types.FunctionCall(name="analysis_agent", args={"request": "..."}))
+    call = types.Part(
+        function_call=types.FunctionCall(name="analysis_agent", args={"request": "..."})
+    )
     response = make_response(call)
 
     result = append_mutation_summary(context, response)
@@ -478,7 +480,9 @@ def test_no_append_to_function_call():
 def test_no_append_without_summary():
 
     context = SimpleNamespace(state={"mutation_summary": None})
-    response = make_response(types.Part(text="Aspirin has a molecular weight of 180.16 Da."))
+    response = make_response(
+        types.Part(text="Aspirin has a molecular weight of 180.16 Da.")
+    )
 
     result = append_mutation_summary(context, response)
 
@@ -486,7 +490,7 @@ def test_no_append_without_summary():
 
 
 def test_no_append_to_partial_response():
-    
+
     context = SimpleNamespace(state={"mutation_summary": SUMMARY})
     response = make_response(types.Part(text="Here are the most"), partial=True)
 
