@@ -74,7 +74,7 @@ def guard_compound_lookup(
 
 
 def save_user_message(callback_context) -> None:
-    """Store the user's original message in the callback state.
+    """Store the user's original message and mutation summary in the callback state.
 
     Args:
         callback_context: Context containing the user message and state.
@@ -86,6 +86,7 @@ def save_user_message(callback_context) -> None:
     content = callback_context.user_content
     texts = [part.text for part in content.parts if part.text] if content else []
     callback_context.state["original_user_message"] = "\n".join(texts)
+    callback_context.state["mutation_summary"] = None
 
     return None
 
@@ -238,4 +239,33 @@ def guard_trusted_smiles(
             ),
         }
 
+    return None
+
+
+def record_mutation_summary(
+    tool: BaseTool, args: dict, tool_context: ToolContext, tool_response: dict
+) -> None:
+    """Store the mutation summary returned by `get_target_activities` in state.
+
+    Args:
+        tool: Tool that produced the response.
+        args: Arguments passed to the tool.
+        tool_context: Context containing the state used to store the summary.
+        tool_response: Tool response containing the mutation summary.
+
+    Returns:
+        None.
+    """
+
+    if tool.name != "get_target_activities":
+        return None
+
+    try:
+        data = json.loads(tool_response["content"][0]["text"])
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+
+    summary = data.get("mutation_summary")
+    if summary:
+        tool_context.state["mutation_summary"] = summary
     return None

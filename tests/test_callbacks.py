@@ -8,6 +8,7 @@ from research_assistant.callbacks import (
     record_trusted_smiles,
     smiles_in_user_text,
     guard_trusted_smiles,
+    record_mutation_summary,
 )
 from types import SimpleNamespace
 from google.genai import types
@@ -161,17 +162,17 @@ def test_guard_image_in_text():
 
 # testing save_user_message
 
-
 def test_save_user_message_stores_text():
 
     content = types.Content(
         role="user", parts=[types.Part(text="Is sotorasibb drug-like?")]
     )
-    context = SimpleNamespace(user_content=content, state={})
+    context = SimpleNamespace(user_content=content, state={"mutation_summary": "old"})
 
     save_user_message(context)
 
     assert context.state["original_user_message"] == "Is sotorasibb drug-like?"
+    assert context.state["mutation_summary"] is None
 
 
 def test_guard_uses_saved_user_message():
@@ -389,3 +390,36 @@ def test_parallel_recording_keeps_both_smiles():
     # both SMILES must have survived the merge
     assert "trusted_smiles:CC(=O)OC1=CC=CC=C1C(=O)O" in coordinator_state
     assert "trusted_smiles:CC(C)CC1=CC=C(C=C1)C(C)C(=O)O" in coordinator_state
+
+
+def test_record_mutation_summary_stores_it():
+
+    tool = SimpleNamespace(name="get_target_activities")
+    summary = (
+        "0 of 10 results annotated with G12C (results are not filtered by mutation)"
+    )
+    response = {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps({"status": "success", "mutation_summary": summary}),
+            }
+        ]
+    }
+    context = SimpleNamespace(state={})
+
+    record_mutation_summary(tool, {}, context, response)
+
+    assert context.state["mutation_summary"] == summary
+
+
+def test_record_mutation_summary_ignores_other_tools():
+
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+    context = SimpleNamespace(state={})
+
+    record_mutation_summary(
+        tool, {}, context, {"content": [{"type": "text", "text": "{}"}]}
+    )
+
+    assert "mutation_summary" not in context.state

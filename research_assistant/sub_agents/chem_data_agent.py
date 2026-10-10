@@ -8,7 +8,11 @@ from mcp import StdioServerParameters
 from google.adk.tools.mcp_tool.mcp_session_manager import StdioConnectionParams
 
 from research_assistant.config import make_model
-from research_assistant.callbacks import guard_compound_lookup, record_trusted_smiles
+from research_assistant.callbacks import (
+    guard_compound_lookup,
+    record_trusted_smiles,
+    record_mutation_summary,
+)
 from research_assistant.prompts import CHEM_DATA_AGENT_INSTRUCTION
 
 
@@ -33,5 +37,5 @@ chem_data_agent = Agent(
     instruction=CHEM_DATA_AGENT_INSTRUCTION,
     tools=[mcp_toolset],
     before_tool_callback=guard_compound_lookup,
-    after_tool_callback=record_trusted_smiles,
+    after_tool_callback=[record_trusted_smiles, record_mutation_summary],
 )
