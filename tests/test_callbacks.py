@@ -356,19 +356,30 @@ def test_other_tools_not_checked():
 
 
 def test_parallel_recording_keeps_both_smiles():
-    
+
     tool = SimpleNamespace(name="lookup_compound_by_name")
 
     def response_for(smiles):
-        return {"content": [{"type": "text", "text": json.dumps({"status": "success", "smiles": smiles})}]}
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps({"status": "success", "smiles": smiles}),
+                }
+            ]
+        }
 
     # 1. two parallel calls, each starting from its own copy of the same (empty) state
     call_a = SimpleNamespace(state={})
     call_b = SimpleNamespace(state={})
 
     # 2. each call records its own compound
-    record_trusted_smiles(tool, {}, call_a, response_for("CC(=O)OC1=CC=CC=C1C(=O)O"))   # aspirin
-    record_trusted_smiles(tool, {}, call_b, response_for("CC(C)CC1=CC=C(C=C1)C(C)C(=O)O"))  # ibuprofen
+    record_trusted_smiles(
+        tool, {}, call_a, response_for("CC(=O)OC1=CC=CC=C1C(=O)O")
+    )  # aspirin
+    record_trusted_smiles(
+        tool, {}, call_b, response_for("CC(C)CC1=CC=C(C=C1)C(C)C(=O)O")
+    )  # ibuprofen
 
     # 3. the coordinator merges both results, one after the other (like ADK does)
     coordinator_state = {}

@@ -7,7 +7,15 @@ from research_assistant.tools.chem_tools import _clean_smiles
 
 
 def name_in_texts(name: str, texts: list[str]) -> bool:
-    """Check whether the name appears as a whole term in any of the texts."""
+    """Check whether a name appears as an exact term in any provided text.
+
+    Args:
+        name: Name to search for.
+        texts: Text or list of texts to search.
+
+    Returns:
+        True if the name is found as an exact term, otherwise False.
+    """
 
     if isinstance(texts, str):
         texts = [texts]
@@ -66,7 +74,14 @@ def guard_compound_lookup(
 
 
 def save_user_message(callback_context) -> None:
-    """Store the user's original message in state, so specialists can check against it."""
+    """Store the user's original message in the callback state.
+
+    Args:
+        callback_context: Context containing the user message and state.
+
+    Returns:
+        None.
+    """
 
     content = callback_context.user_content
     texts = [part.text for part in content.parts if part.text] if content else []
@@ -76,7 +91,15 @@ def save_user_message(callback_context) -> None:
 
 
 def extract_smiles(tool_name: str, data: dict) -> list[str]:
-    """Return the SMILES contained in a PubChem or ChEMBL tool result."""
+    """Extract SMILES from supported PubChem or ChEMBL tool results.
+
+    Args:
+        tool_name: Name of the tool that produced the result.
+        data: Parsed tool result containing molecular data.
+
+    Returns:
+        List of SMILES found in the tool result, or an empty list if none are found.
+    """
 
     if tool_name == "lookup_compound_by_name":
         smiles = data.get("smiles")
@@ -190,7 +213,7 @@ def guard_trusted_smiles(
         requested.append(args["query_smiles"])
 
     # checking the two allowed sources
-    
+
     user_text = tool_context.state.get("original_user_message") or ""
 
     if not user_text and tool_context.user_content is not None:
@@ -204,7 +227,6 @@ def guard_trusted_smiles(
         if f"trusted_smiles:{_clean_smiles(s)}" not in tool_context.state
         and _clean_smiles(s) not in user_tokens
     ]
-
 
     if untrusted:
         return {

@@ -6,6 +6,7 @@ MODEL_NAME = "gemini-3.5-flash-lite"
 
 def make_model() -> Gemini:
     """Gemini model with retries on temporary errors (shared by all agents)."""
+
     return Gemini(
         model=MODEL_NAME,
         retry_options=types.HttpRetryOptions(
