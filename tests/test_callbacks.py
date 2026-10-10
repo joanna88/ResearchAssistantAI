@@ -243,21 +243,22 @@ def test_record_trusted_smiles_adds_to_state():
             {"type": "text", "text": json.dumps({"status": "success", "smiles": "CCO"})}
         ]
     }
-    context = SimpleNamespace(state={"trusted_smiles": ["CCN"]})
+    context = SimpleNamespace(state={"trusted_smiles:CCN": True})
 
     record_trusted_smiles(tool, {}, context, response)
 
-    assert context.state["trusted_smiles"] == ["CCN", "CCO"]
+    assert "trusted_smiles:CCN" in context.state
+    assert "trusted_smiles:CCO" in context.state
 
 
 def test_record_trusted_smiles_ignores_unexpected_response():
 
     tool = SimpleNamespace(name="lookup_compound_by_name")
-    context = SimpleNamespace(state={"trusted_smiles": ["CCN"]})
+    context = SimpleNamespace(state={})
 
     record_trusted_smiles(tool, {}, context, {})
 
-    assert context.state["trusted_smiles"] == ["CCN"]
+    assert context.state == {}
 
 
 # testing smiles_in_user_text
@@ -304,7 +305,7 @@ ASSESS = SimpleNamespace(name="assess_druglikeness")
 
 def test_trusted_smiles_allowed():
 
-    context = make_context(state={"trusted_smiles": ["CCO"]})
+    context = make_context(state={"trusted_smiles:CCO": True})
 
     result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CCO"]}, context)
 
@@ -312,7 +313,7 @@ def test_trusted_smiles_allowed():
 
 
 def test_user_typed_smiles_allowed():
-    
+
     context = make_context(state={"original_user_message": "Is CCN drug-like?"})
 
     result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CCN"]}, context)
@@ -320,10 +321,9 @@ def test_user_typed_smiles_allowed():
     assert result is None
 
 
-
 def test_truncated_smiles_blocked():
 
-    context = make_context(state={"trusted_smiles": ["CC(=O)Oc1ccccc1C(=O)O"]})
+    context = make_context(state={"trusted_smiles:CC(=O)Oc1ccccc1C(=O)O": True})
 
     result = guard_trusted_smiles(ASSESS, {"smiles_list": ["CC(=O)Oc1ccccc1"]}, context)
 
@@ -335,7 +335,7 @@ def test_truncated_smiles_blocked():
 def test_untrusted_query_smiles_blocked():
 
     tool = SimpleNamespace(name="tanimoto_similarity")
-    context = make_context(state={"trusted_smiles": ["CCO"]})
+    context = make_context(state={"trusted_smiles:CCO": True})
 
     result = guard_trusted_smiles(
         tool, {"query_smiles": "CCN", "smiles_list": ["CCO"]}, context
@@ -353,3 +353,28 @@ def test_other_tools_not_checked():
     result = guard_trusted_smiles(tool, {"question": "anything"}, context)
 
     assert result is None
+
+
+def test_parallel_recording_keeps_both_smiles():
+    
+    tool = SimpleNamespace(name="lookup_compound_by_name")
+
+    def response_for(smiles):
+        return {"content": [{"type": "text", "text": json.dumps({"status": "success", "smiles": smiles})}]}
+
+    # 1. two parallel calls, each starting from its own copy of the same (empty) state
+    call_a = SimpleNamespace(state={})
+    call_b = SimpleNamespace(state={})
+
+    # 2. each call records its own compound
+    record_trusted_smiles(tool, {}, call_a, response_for("CC(=O)OC1=CC=CC=C1C(=O)O"))   # aspirin
+    record_trusted_smiles(tool, {}, call_b, response_for("CC(C)CC1=CC=C(C=C1)C(C)C(=O)O"))  # ibuprofen
+
+    # 3. the coordinator merges both results, one after the other (like ADK does)
+    coordinator_state = {}
+    coordinator_state.update(call_a.state)
+    coordinator_state.update(call_b.state)
+
+    # both SMILES must have survived the merge
+    assert "trusted_smiles:CC(=O)OC1=CC=CC=C1C(=O)O" in coordinator_state
+    assert "trusted_smiles:CC(C)CC1=CC=C(C=C1)C(C)C(=O)O" in coordinator_state

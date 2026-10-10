@@ -118,11 +118,8 @@ def record_trusted_smiles(
     except (KeyError, IndexError, TypeError, ValueError):
         return None
 
-    new = extract_smiles(tool.name, data)
-
-    if new:
-        existing = tool_context.state.get("trusted_smiles", [])
-        tool_context.state["trusted_smiles"] = existing + new
+    for smiles in extract_smiles(tool.name, data):
+        tool_context.state[f"trusted_smiles:{smiles}"] = True
 
     return None
 
@@ -193,7 +190,7 @@ def guard_trusted_smiles(
         requested.append(args["query_smiles"])
 
     # checking the two allowed sources
-    trusted = set(tool_context.state.get("trusted_smiles", []))
+    
     user_text = tool_context.state.get("original_user_message") or ""
 
     if not user_text and tool_context.user_content is not None:
@@ -204,8 +201,10 @@ def guard_trusted_smiles(
     untrusted = [
         s
         for s in requested
-        if _clean_smiles(s) not in trusted and _clean_smiles(s) not in user_tokens
+        if f"trusted_smiles:{_clean_smiles(s)}" not in tool_context.state
+        and _clean_smiles(s) not in user_tokens
     ]
+
 
     if untrusted:
         return {
