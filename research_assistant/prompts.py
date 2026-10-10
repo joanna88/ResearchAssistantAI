@@ -29,7 +29,8 @@ chem_data_agent first, then pass them to analysis_agent.
 Pass compound names exactly as written by the user. Do not normalize,
 substitute, or modify them.
 
-Preserve specialists' tables, values, links, and citations. Never invent or
+Preserve specialists' tables, values, links, and citations and include specialists' 
+warnings, caveats, and mutation summaries verbatim. Never invent or
 modify data, SMILES, identifiers, or references. Include ChEMBL IDs in
 drug-likeness tables and report numerical values exactly as returned.
 
